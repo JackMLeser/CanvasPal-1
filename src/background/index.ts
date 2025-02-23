@@ -417,7 +417,7 @@ class BackgroundService {
             if (dashboardAssignment) {
                 return {
                     ...assignment,
-                    dueDate: new Date(dashboardAssignment.dueDate).toISOString(),
+                    dueDate: dashboardAssignment.dueDate,
                     type: dashboardAssignment.type || assignment.type
                 };
             }
@@ -436,7 +436,7 @@ class BackgroundService {
                     const newAssignment: Assignment = {
                         id: `${courseData.courseName}_${dashboardAssignment.name}`,
                         title: dashboardAssignment.name,
-                        dueDate: new Date(dashboardAssignment.dueDate).toISOString(),
+                        dueDate: dashboardAssignment.dueDate,
                         course: courseData.courseName,
                         courseId: courseData.courseName,
                         type: dashboardAssignment.type,

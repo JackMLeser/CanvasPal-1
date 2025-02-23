@@ -83,12 +83,31 @@ class PopupManager {
         return 'low-priority';
     }
 
-    private formatDate(date: Date): string {
-        return new Date(date).toLocaleDateString('en-US', {
-            month: 'short',
-            day: 'numeric',
-            year: 'numeric'
-        });
+    private formatDate(date: string): string {
+        // Handle special date strings
+        if (date === 'All Day' || date === 'No due date') {
+            return date;
+        }
+
+        // Extract date from "Due: " format if present
+        const dateStr = date.startsWith('Due: ') ? date.substring(5) : date;
+        
+        try {
+            const dateObj = new Date(dateStr);
+            // Check if date parsing was successful
+            if (!isNaN(dateObj.getTime())) {
+                return dateObj.toLocaleDateString('en-US', {
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric'
+                });
+            }
+            // Return original string if parsing fails
+            return date;
+        } catch {
+            // Return original string if parsing fails
+            return date;
+        }
     }
 
     private showNoAssignments(message: string): void {

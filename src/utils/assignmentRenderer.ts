@@ -54,18 +54,40 @@ export class AssignmentRenderer {
         return classes.join(' ');
     }
 
-    private formatDueDate(date: Date): string {
-        const now = new Date();
-        const diffDays = Math.ceil((date.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+    private formatDueDate(date: string): string {
+        // Handle special date strings
+        if (date === 'All Day') {
+            return 'Due today (All Day)';
+        }
+        if (date === 'No due date') {
+            return 'No due date';
+        }
+
+        // Extract date from "Due: " format if present
+        const dateStr = date.startsWith('Due: ') ? date.substring(5) : date;
         
-        if (diffDays < 0) {
-            return `Overdue by ${Math.abs(diffDays)} day${Math.abs(diffDays) !== 1 ? 's' : ''}`;
-        } else if (diffDays === 0) {
-            return 'Due today';
-        } else if (diffDays === 1) {
-            return 'Due tomorrow';
-        } else {
-            return `Due in ${diffDays} days`;
+        try {
+            const dueDateObj = new Date(dateStr);
+            // Check if date parsing was successful
+            if (!isNaN(dueDateObj.getTime())) {
+                const now = new Date();
+                const diffDays = Math.ceil((dueDateObj.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+                
+                if (diffDays < 0) {
+                    return `Overdue by ${Math.abs(diffDays)} day${Math.abs(diffDays) !== 1 ? 's' : ''}`;
+                } else if (diffDays === 0) {
+                    return 'Due today';
+                } else if (diffDays === 1) {
+                    return 'Due tomorrow';
+                } else {
+                    return `Due in ${diffDays} days`;
+                }
+            }
+            // Return original string if parsing fails
+            return date;
+        } catch {
+            // Return original string if parsing fails
+            return date;
         }
     }
 

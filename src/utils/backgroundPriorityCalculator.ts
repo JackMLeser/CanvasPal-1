@@ -1,4 +1,4 @@
-import { Assignment, PriorityWeights } from '../types/models';
+ximport { Assignment, PriorityWeights } from '../types/models';
 import { Logger } from './logger';
 
 export class BackgroundPriorityCalculator {
@@ -41,10 +41,31 @@ export class BackgroundPriorityCalculator {
         }
     }
 
-    private calculateDaysUntilDue(dueDate: Date): number {
-        const now = new Date();
-        const diffTime = dueDate.getTime() - now.getTime();
-        return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    private calculateDaysUntilDue(dueDate: string): number {
+        // Handle special cases
+        if (dueDate === 'All Day' || dueDate === 'No due date') {
+            return 14; // Default to 2 weeks
+        }
+
+        try {
+            // Extract date from "Due: " format if present
+            const dateStr = dueDate.startsWith('Due: ') ? dueDate.substring(5) : dueDate;
+            
+            const now = new Date();
+            const dueDateObj = new Date(dateStr);
+            
+            // Check if date parsing was successful
+            if (isNaN(dueDateObj.getTime())) {
+                this.logger.warn('Invalid date format:', dueDate);
+                return 14; // Default to 2 weeks for invalid dates
+            }
+            
+            const diffTime = dueDateObj.getTime() - now.getTime();
+            return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        } catch (error) {
+            this.logger.error('Error calculating days until due:', error);
+            return 14; // Default to 2 weeks on error
+        }
     }
 
     private calculateDueDatePriority(daysUntilDue: number): number {

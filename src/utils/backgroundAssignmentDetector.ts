@@ -101,7 +101,7 @@ export class BackgroundAssignmentDetector {
         if (!item.plannable || !item.plannable_type) return null;
 
         const type = this.determineAssignmentType(item.plannable_type);
-        const dueDate = item.plannable_date ? new Date(item.plannable_date) : null;
+        const dueDate = item.plannable_date || null;
 
         if (!type || !dueDate) return null;
 
@@ -132,7 +132,7 @@ export class BackgroundAssignmentDetector {
         return {
             id: submission.id.toString(),
             title: submission.name || submission.assignment?.name || '',
-            dueDate: new Date(submission.due_at),
+            dueDate: submission.due_at,
             course: submission.course?.name || '',
             courseId: submission.course_id?.toString(),
             type: 'assignment',
@@ -156,7 +156,7 @@ export class BackgroundAssignmentDetector {
         return {
             id: assignment.id.toString(),
             title: assignment.name || '',
-            dueDate: new Date(assignment.due_at),
+            dueDate: assignment.due_at,
             course: card.shortName || '',
             courseId: card.id?.toString(),
             type,

@@ -64,10 +64,33 @@ export class PriorityCalculator {
         }, { assignmentTitle: assignment.title });
     }
 
-    private calculateDaysUntilDue(dueDate: Date): number {
-        const now = new Date();
-        const diffTime = dueDate.getTime() - now.getTime();
-        return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    private calculateDaysUntilDue(dueDate: string): number {
+        // Handle special cases
+        if (dueDate === 'All Day') {
+            return 0; // Due today
+        }
+        if (dueDate === 'No due date') {
+            return 14; // Default to 2 weeks
+        }
+
+        // Extract date from "Due: " format if present
+        const dateStr = dueDate.startsWith('Due: ') ? dueDate.substring(5) : dueDate;
+        
+        try {
+            const dueDateObj = new Date(dateStr);
+            // Check if date parsing was successful
+            if (!isNaN(dueDateObj.getTime())) {
+                const now = new Date();
+                const diffTime = dueDateObj.getTime() - now.getTime();
+                return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            }
+            // Default to 2 weeks if parsing fails
+            this.logger.warn('Invalid date format:', dueDate);
+            return 14;
+        } catch (error) {
+            this.logger.error('Error calculating days until due:', error);
+            return 14; // Default to 2 weeks on error
+        }
     }
 
     private calculateDueDatePriority(daysUntilDue: number): number {

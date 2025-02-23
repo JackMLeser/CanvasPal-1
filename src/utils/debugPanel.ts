@@ -301,9 +301,7 @@ export class DebugPanel {
                     ${assignment.points ? `📝 ${assignment.points}/${assignment.maxPoints} points` : 'No points data'}
                 </div>
                 <div style="color: #ADD8E6; font-size: 11px;">
-                    ⏰ Due: ${assignment.dueDate === 'All Day' ? 'All Day' :
-                            assignment.dueDate.includes('Due: ') ? assignment.dueDate :
-                            new Date(assignment.dueDate).toLocaleDateString()}
+                    ⏰ Due: ${this.formatDate(assignment.dueDate)}
                 </div>
                 <div style="color: #DDA0DD; font-size: 11px;">
                     📚 Course: ${assignment.course}
@@ -318,6 +316,33 @@ export class DebugPanel {
     public logDetectionEvent(message: string, data?: any): void {
         this.logger.debug(message, data);
         // Could add visual indication of new events in the panel
+    }
+
+    private formatDate(date: string): string {
+        // Handle special date strings
+        if (date === 'All Day' || date === 'No due date') {
+            return date;
+        }
+
+        // Extract date from "Due: " format if present
+        const dateStr = date.startsWith('Due: ') ? date.substring(5) : date;
+        
+        try {
+            const dateObj = new Date(dateStr);
+            // Check if date parsing was successful
+            if (!isNaN(dateObj.getTime())) {
+                return dateObj.toLocaleDateString('en-US', {
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric'
+                });
+            }
+            // Return original string if parsing fails
+            return date;
+        } catch {
+            // Return original string if parsing fails
+            return date;
+        }
     }
 
     public updatePerformanceAnalysis(analysis: any): void {
