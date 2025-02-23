@@ -1,4 +1,42 @@
 import { Assignment } from '../types/models';
+import { DebugPanel } from '../utils/debugPanel';
+import { DateDebugPanel } from '../utils/dateDebugPanel';
+import { DebugManager } from '../utils/debugManager';
+
+// Create debug manager instance
+const debugManager = new DebugManager();
+
+// Function to initialize debug panels
+const setupDebugPanels = () => {
+    // First enable debug mode if not already enabled
+    if (!debugManager.isDebugEnabled()) {
+        debugManager.toggleDebugMode();
+    }
+
+    // Configure debug settings
+    debugManager.updateDebugConfig({
+        enabled: true,
+        showDateDebug: true,
+        showAssignmentDebug: true,
+        showPriorityDebug: true,
+        showPerformanceMetrics: true,
+        logLevel: 'debug'
+    });
+
+    // Force create and show debug panels
+    const mainPanel = debugManager.getMainPanel();
+    const datePanel = debugManager.getDatePanel();
+
+    // Ensure panels are in the DOM
+    if (!document.getElementById('canvaspal-debug-panel')) {
+        mainPanel.toggleVisibility();
+    }
+    if (!document.getElementById('date-debug-panel')) {
+        datePanel.toggleVisibility();
+    }
+
+    console.log('Debug panels initialized and displayed');
+};
 
 export interface GradeData {
     courseName: string;
@@ -42,26 +80,56 @@ export class DashboardScraper {
     public scrapeDashboardData(): DashboardData[] {
         try {
             const dashboardData: DashboardData[] = [];
+            const courseAssignments: { [courseName: string]: DashboardData['assignments'] } = {};
             
-            // Find all course sections
-            const courseSections = document.querySelectorAll('.context_module');
-            
-            courseSections.forEach(section => {
-                const courseName = section.querySelector('.name')?.textContent?.trim() || 'Unknown Course';
-                const assignments: DashboardData['assignments'] = [];
-
-                // Find all assignment items in this section
-                const assignmentItems = section.querySelectorAll('.ig-row');
-                assignmentItems.forEach(item => {
-                    const name = item.querySelector('.ig-title')?.textContent?.trim() || '';
-                    const type = item.querySelector('.type_icon')?.getAttribute('title') || '';
-                    const dueDate = item.querySelector('.due_date_display')?.textContent?.trim() || '';
+            // Find all planner items
+            const plannerItems = document.querySelectorAll('.planner-item');
+            plannerItems.forEach(item => {
+                // Get course name
+                const courseElement = item.querySelector('.course-title, .planner-course-title');
+                const courseName = courseElement?.textContent?.trim() || 'Unknown Course';
+                
+                // Get assignment details
+                const assignmentElement = item.querySelector('.planner-item-details');
+                if (assignmentElement) {
+                    const name = item.querySelector('.planner-item-title')?.textContent?.trim() || '';
+                    const typeElement = item.querySelector('.planner-item-type');
+                    const type = typeElement?.textContent?.trim() ||
+                                typeElement?.getAttribute('title')?.trim() ||
+                                item.querySelector('.planner-item-type-icon')?.getAttribute('title')?.trim() || '';
+                    
+                    // Get due date
+                    const dueDateElement = item.querySelector('.planner-item-due-date, .planner-item-time');
+                    let dueDate = '';
+                    
+                    // Parse the due date
+                    if (item.querySelector('.planner-item-time-all-day')) {
+                        dueDate = 'All Day';
+                    } else {
+                        const dueDateText = dueDateElement?.textContent?.trim() || '';
+                        if (dueDateText) {
+                            // Keep the original text which includes "Due: " prefix
+                            dueDate = dueDateText;
+                        } else {
+                            dueDate = 'No due date';
+                        }
+                    }
 
                     if (name) {
-                        assignments.push({ name, type, dueDate });
+                        if (!courseAssignments[courseName]) {
+                            courseAssignments[courseName] = [];
+                        }
+                        courseAssignments[courseName].push({
+                            name,
+                            type,
+                            dueDate: dueDate
+                        });
                     }
-                });
+                }
+            });
 
+            // Convert to DashboardData array
+            Object.entries(courseAssignments).forEach(([courseName, assignments]) => {
                 if (assignments.length > 0) {
                     dashboardData.push({ courseName, assignments });
                 }
@@ -185,10 +253,17 @@ const initializeScrapers = () => {
     }
 
     // Initialize scrapers based on page type
-    if (document.querySelector('.ic-Dashboard-header, .context_module')) {
+    const isDashboard = document.querySelector('.dashboard-planner, .planner-container');
+    const isGradesPage = document.querySelector('.student_grades, .gradebook-content');
+
+    if (isDashboard) {
+        console.log('Initializing dashboard scraper');
         new DashboardScraper();
     }
-    new GradeDataScraper();
+    if (isGradesPage) {
+        console.log('Initializing grades scraper');
+        new GradeDataScraper();
+    }
 };
 
 // Message handling
@@ -234,12 +309,27 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                         sendResponse({ success: false, error: error.message });
                     });
                 return true; // Keep channel open for async response
-
             case 'ASSIGNMENTS_UPDATED':
                 console.log('Assignments updated:', message.assignments);
-                // Handle updated assignments if needed
+                // Update debug panels with assignment information
+                debugManager.getMainPanel().updateAssignmentInfo(message.assignments);
                 sendResponse({ success: true });
                 break;
+
+            case 'DEBUG_DATE_UPDATE':
+                debugManager.getDatePanel().updateDebugInfo(message.data);
+                sendResponse({ success: true });
+                break;
+
+            case 'DEBUG_TOGGLE':
+                if (message.panel === 'date') {
+                    debugManager.getDatePanel().toggleVisibility();
+                } else if (message.panel === 'main') {
+                    debugManager.getMainPanel().toggleVisibility();
+                }
+                sendResponse({ success: true });
+                break;
+
 
             default:
                 console.warn('Unknown message type:', message.type);
@@ -282,16 +372,21 @@ const initialize = async () => {
         await chrome.runtime.sendMessage({ type: 'CONTENT_SCRIPT_READY' });
         console.log('Content script ready message sent');
 
-        // Initialize scrapers based on DOM state
-        const initScrapers = () => {
+        // Initialize scrapers and debug panels
+        const init = () => {
+            // Initialize scrapers
             initializeScrapers();
-            console.log('Scrapers initialized');
+            
+            // Initialize debug panels
+            setupDebugPanels();
+            
+            console.log('Initialization complete');
         };
 
         if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', initScrapers);
+            document.addEventListener('DOMContentLoaded', init);
         } else {
-            initScrapers();
+            init();
         }
     } catch (error) {
         console.error('Failed to initialize content script:', error);

@@ -94,12 +94,34 @@ class BackgroundService {
         sendResponse: (response?: any) => void
     ): Promise<void> {
         try {
-            switch (message.type) {
-                case 'PING':
-                    // Respond immediately to ping requests
-                    sendResponse({ success: true });
-                    break;
+            this.logger.debug('Received message:', { type: message.type });
 
+            // Handle CONTENT_SCRIPT_READY first to ensure proper initialization
+            if (message.type === 'CONTENT_SCRIPT_READY') {
+                this.logger.info('Content script ready');
+                this.contentScriptReady = true;
+                sendResponse({ success: true });
+
+                // Initialize debug settings
+                const settings = await chrome.storage.sync.get('settings');
+                if (settings?.settings?.debugSettings) {
+                    await this.handleSettingsUpdate({
+                        ...settings.settings,
+                        debugSettings: {
+                            ...settings.settings.debugSettings,
+                            enabled: true
+                        }
+                    });
+                }
+
+                // Wait a bit for the page to fully load before fetching assignments
+                setTimeout(() => {
+                    void this.refreshAssignments();
+                }, 1000);
+                return;
+            }
+
+            switch (message.type) {
                 case 'SETTINGS_UPDATED':
                     try {
                         await this.handleSettingsUpdate(message.settings);
@@ -147,16 +169,6 @@ class BackgroundService {
                 case 'DASHBOARD_DATA':
                     this.handleDashboardData(message.data);
                     sendResponse({ success: true });
-                    break;
-
-                case 'CONTENT_SCRIPT_READY':
-                    this.logger.info('Content script ready');
-                    this.contentScriptReady = true;
-                    sendResponse({ success: true });
-                    // Wait a bit for the page to fully load before fetching assignments
-                    setTimeout(() => {
-                        void this.refreshAssignments();
-                    }, 1000);
                     break;
 
                 default:
@@ -405,7 +417,7 @@ class BackgroundService {
             if (dashboardAssignment) {
                 return {
                     ...assignment,
-                    dueDate: new Date(dashboardAssignment.dueDate),
+                    dueDate: new Date(dashboardAssignment.dueDate).toISOString(),
                     type: dashboardAssignment.type || assignment.type
                 };
             }
@@ -424,7 +436,7 @@ class BackgroundService {
                     const newAssignment: Assignment = {
                         id: `${courseData.courseName}_${dashboardAssignment.name}`,
                         title: dashboardAssignment.name,
-                        dueDate: new Date(dashboardAssignment.dueDate),
+                        dueDate: new Date(dashboardAssignment.dueDate).toISOString(),
                         course: courseData.courseName,
                         courseId: courseData.courseName,
                         type: dashboardAssignment.type,
@@ -509,8 +521,18 @@ class BackgroundService {
 // Create and export a singleton instance
 export const backgroundService = new BackgroundService();
 
-// Initialize background service and set up listeners
-const initializeBackgroundService = async () => {
+// Initialize background service
+(async () => {
+    // Set up global message listener first
+    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+        // Handle PING immediately
+        if (message.type === 'PING') {
+            sendResponse({ success: true });
+            return true;
+        }
+        return false;
+    });
+
     try {
         // Initialize core service
         await backgroundService.initialize();
@@ -531,25 +553,12 @@ const initializeBackgroundService = async () => {
             }
         });
 
-        // Set up dedicated PING handler
-        chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-            if (message.type === 'PING') {
-                sendResponse({ success: true });
-                return true;
-            }
-            return false;
-        });
-
         console.log('Background service setup complete');
     } catch (error: unknown) {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
         console.error('Failed to initialize background service:', errorMessage);
-        // Re-throw to ensure service worker restarts
         throw error;
     }
-};
-
-// Start initialization
-initializeBackgroundService().catch(error => {
+})().catch(error => {
     console.error('Critical error during background service initialization:', error);
 });

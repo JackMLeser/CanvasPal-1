@@ -16,114 +16,137 @@ export class DebugPanel {
     }
 
     private createPanel(): void {
-        this.panel = document.createElement('div');
-        this.panel.id = 'canvaspal-debug-panel';
-        this.panel.innerHTML = `
-            <div class="debug-panel-header">
-                <span>🔍 CanvasPal Debug</span>
-                <div class="debug-panel-controls">
-                    <button id="clear-metrics" title="Clear Performance Metrics">🗑️</button>
-                    <button id="canvaspal-debug-close">✕</button>
+        const initPanel = () => {
+            if (!document.body) {
+                // Wait for body to be available
+                requestAnimationFrame(initPanel);
+                return;
+            }
+
+            this.panel = document.createElement('div');
+            this.panel.id = 'canvaspal-debug-panel';
+            this.panel.innerHTML = `
+                <div class="debug-panel-header">
+                    <span>🔍 CanvasPal Debug</span>
+                    <div class="debug-panel-controls">
+                        <button id="clear-metrics" title="Clear Performance Metrics">🗑️</button>
+                        <button id="canvaspal-debug-close">✕</button>
+                    </div>
                 </div>
-            </div>
-            <div class="debug-panel-content">
-                <div id="performance-metrics"></div>
-                <div id="assignment-info"></div>
-            </div>
-        `;
+                <div class="debug-panel-content">
+                    <div id="performance-metrics"></div>
+                    <div id="assignment-info"></div>
+                </div>
+            `;
 
-        // Apply styles
-        this.panel.style.cssText = `
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            width: 350px;
-            max-height: 500px;
-            background: rgba(0, 0, 0, 0.9);
-            color: white;
-            padding: 15px;
-            border-radius: 8px;
-            font-family: monospace;
-            font-size: 12px;
-            z-index: 9999;
-            overflow-y: auto;
-            box-shadow: 0 0 10px rgba(0,0,0,0.5);
-            display: none;
-        `;
-
-        // Add button styles
-        const style = document.createElement('style');
-        style.textContent = `
-            .debug-panel-header {
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                margin-bottom: 10px;
-                padding-bottom: 10px;
-                border-bottom: 1px solid rgba(255,255,255,0.1);
-            }
-
-            .debug-panel-controls {
-                display: flex;
-                gap: 8px;
-            }
-
-            .debug-panel-controls button {
-                background: none;
-                border: none;
+            // Apply styles
+            this.panel.style.cssText = `
+                position: fixed;
+                bottom: 20px;
+                right: 20px;
+                width: 350px;
+                max-height: 500px;
+                background: rgba(0, 0, 0, 0.9);
                 color: white;
-                cursor: pointer;
-                padding: 4px;
-                border-radius: 4px;
-                transition: background 0.2s;
+                padding: 15px;
+                border-radius: 8px;
+                font-family: monospace;
+                font-size: 12px;
+                z-index: 9999;
+                overflow-y: auto;
+                box-shadow: 0 0 10px rgba(0,0,0,0.5);
+                display: none;
+            `;
+
+            // Add button styles
+            const style = document.createElement('style');
+            style.textContent = `
+                .debug-panel-header {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    margin-bottom: 10px;
+                    padding-bottom: 10px;
+                    border-bottom: 1px solid rgba(255,255,255,0.1);
+                }
+
+                .debug-panel-controls {
+                    display: flex;
+                    gap: 8px;
+                }
+
+                .debug-panel-controls button {
+                    background: none;
+                    border: none;
+                    color: white;
+                    cursor: pointer;
+                    padding: 4px;
+                    border-radius: 4px;
+                    transition: background 0.2s;
+                }
+
+                .debug-panel-controls button:hover {
+                    background: rgba(255,255,255,0.1);
+                }
+
+                .performance-section {
+                    margin: 10px 0;
+                    padding: 8px;
+                    background: rgba(255,255,255,0.05);
+                    border-radius: 4px;
+                }
+
+                .metric-item {
+                    margin: 4px 0;
+                    display: flex;
+                    justify-content: space-between;
+                }
+
+                .metric-value {
+                    color: #90EE90;
+                }
+
+                .slow-metric {
+                    color: #ff6b6b;
+                }
+
+                .normal-metric {
+                    color: #ffd700;
+                }
+
+                .fast-metric {
+                    color: #90EE90;
+                }
+            `;
+
+            // Wait for head to be available
+            if (document.head) {
+                document.head.appendChild(style);
+            } else {
+                document.addEventListener('DOMContentLoaded', () => {
+                    document.head.appendChild(style);
+                });
             }
 
-            .debug-panel-controls button:hover {
-                background: rgba(255,255,255,0.1);
-            }
+            document.body.appendChild(this.panel);
 
-            .performance-section {
-                margin: 10px 0;
-                padding: 8px;
-                background: rgba(255,255,255,0.05);
-                border-radius: 4px;
-            }
+            // Add event listeners
+            document.getElementById('canvaspal-debug-close')?.addEventListener('click', () => {
+                this.toggleVisibility();
+            });
 
-            .metric-item {
-                margin: 4px 0;
-                display: flex;
-                justify-content: space-between;
-            }
+            document.getElementById('clear-metrics')?.addEventListener('click', () => {
+                this.performanceMonitor.clear();
+                this.updatePerformanceMetrics();
+            });
+        };
 
-            .metric-value {
-                color: #90EE90;
-            }
-
-            .slow-metric {
-                color: #ff6b6b;
-            }
-
-            .normal-metric {
-                color: #ffd700;
-            }
-
-            .fast-metric {
-                color: #90EE90;
-            }
-        `;
-        document.head.appendChild(style);
-
-        document.body.appendChild(this.panel);
-
-        // Add event listeners
-        document.getElementById('canvaspal-debug-close')?.addEventListener('click', () => {
-            this.toggleVisibility();
-        });
-
-        document.getElementById('clear-metrics')?.addEventListener('click', () => {
-            this.performanceMonitor.clear();
-            this.updatePerformanceMetrics();
-        });
+        // Start the initialization process
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initPanel);
+        } else {
+            initPanel();
+        }
     }
 
     private initializeKeyboardShortcut(): void {
@@ -278,7 +301,9 @@ export class DebugPanel {
                     ${assignment.points ? `📝 ${assignment.points}/${assignment.maxPoints} points` : 'No points data'}
                 </div>
                 <div style="color: #ADD8E6; font-size: 11px;">
-                    ⏰ Due: ${assignment.dueDate.toLocaleDateString()}
+                    ⏰ Due: ${assignment.dueDate === 'All Day' ? 'All Day' :
+                            assignment.dueDate.includes('Due: ') ? assignment.dueDate :
+                            new Date(assignment.dueDate).toLocaleDateString()}
                 </div>
                 <div style="color: #DDA0DD; font-size: 11px;">
                     📚 Course: ${assignment.course}

@@ -29,7 +29,7 @@ export type AssignmentType = 'quiz' | 'assignment' | 'discussion' | 'announcemen
 export interface Assignment {
     id: string;
     title: string;
-    dueDate: Date;
+    dueDate: string; // ISO date string
     course: string;
     courseId: string;
     type: AssignmentType | string;

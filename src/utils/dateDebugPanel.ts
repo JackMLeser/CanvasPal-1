@@ -26,52 +26,75 @@ export class DateDebugPanel {
     }
 
     private createPanel(): void {
-        this.panel = document.createElement('div');
-        this.panel.id = 'date-debug-panel';
-        this.panel.style.cssText = `
-            position: fixed;
-            bottom: 20px;
-            left: 20px;
-            width: 300px;
-            max-height: 400px;
-            background: rgba(0, 0, 0, 0.9);
-            color: white;
-            padding: 15px;
-            border-radius: 8px;
-            font-family: monospace;
-            font-size: 12px;
-            z-index: 9999;
-            overflow-y: auto;
-            box-shadow: 0 0 10px rgba(0,0,0,0.5);
-            display: none;
-        `;
-
-        const header = document.createElement('div');
-        header.innerHTML = `
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                <span style="color: #ffd700; font-weight: bold;">📅 Date Detection Debug</span>
-                <button id="date-debug-close" style="background: none; border: none; color: white; cursor: pointer;">✕</button>
-            </div>
-        `;
-        this.panel.appendChild(header);
-
-        const content = document.createElement('div');
-        content.id = 'date-debug-content';
-        this.panel.appendChild(content);
-
-        document.body.appendChild(this.panel);
-
-        document.getElementById('date-debug-close')?.addEventListener('click', () => {
-            this.toggleVisibility();
-        });
-
-        // Add keyboard shortcut (Ctrl/Cmd + Shift + T)
-        document.addEventListener('keydown', (e) => {
-            if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'T') {
-                e.preventDefault();
-                this.toggleVisibility();
+        const initPanel = () => {
+            if (!document.body) {
+                // Wait for body to be available
+                requestAnimationFrame(initPanel);
+                return;
             }
-        });
+
+            this.panel = document.createElement('div');
+            this.panel.id = 'date-debug-panel';
+            this.panel.style.cssText = `
+                position: fixed;
+                bottom: 20px;
+                left: 20px;
+                width: 300px;
+                max-height: 400px;
+                background: rgba(0, 0, 0, 0.9);
+                color: white;
+                padding: 15px;
+                border-radius: 8px;
+                font-family: monospace;
+                font-size: 12px;
+                z-index: 9999;
+                overflow-y: auto;
+                box-shadow: 0 0 10px rgba(0,0,0,0.5);
+                display: none;
+            `;
+
+            const header = document.createElement('div');
+            header.innerHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <span style="color: #ffd700; font-weight: bold;">📅 Date Detection Debug</span>
+                    <button id="date-debug-close" style="background: none; border: none; color: white; cursor: pointer;">✕</button>
+                </div>
+            `;
+            this.panel.appendChild(header);
+
+            const content = document.createElement('div');
+            content.id = 'date-debug-content';
+            this.panel.appendChild(content);
+
+            document.body.appendChild(this.panel);
+
+            document.getElementById('date-debug-close')?.addEventListener('click', () => {
+                this.toggleVisibility();
+            });
+        };
+
+        // Start the initialization process
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => {
+                initPanel();
+                // Add keyboard shortcut after DOM is ready
+                document.addEventListener('keydown', (e) => {
+                    if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'T') {
+                        e.preventDefault();
+                        this.toggleVisibility();
+                    }
+                });
+            });
+        } else {
+            initPanel();
+            // Add keyboard shortcut immediately since DOM is ready
+            document.addEventListener('keydown', (e) => {
+                if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'T') {
+                    e.preventDefault();
+                    this.toggleVisibility();
+                }
+            });
+        }
     }
 
     public toggleVisibility(): void {
