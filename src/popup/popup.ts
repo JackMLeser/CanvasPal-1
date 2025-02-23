@@ -119,13 +119,29 @@ class PopupManager {
 
     private async loadAssignments(): Promise<void> {
         try {
+            // First try to get assignments from storage
+            const storage = await chrome.storage.local.get(['currentAssignments', 'lastUpdate']);
+            const storedAssignments = storage.currentAssignments;
+            const lastUpdate = storage.lastUpdate ? new Date(storage.lastUpdate) : null;
+            const now = new Date();
+
+            // Check if stored assignments are fresh (less than 5 minutes old)
+            if (storedAssignments && lastUpdate &&
+                (now.getTime() - lastUpdate.getTime() < 5 * 60 * 1000)) {
+                console.log('Using stored assignments:', storedAssignments);
+                this.assignments = storedAssignments;
+                this.updateAssignmentCount();
+                this.renderAssignments();
+                return;
+            }
+
+            // If no fresh stored assignments, get from background
             const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
             if (!tabs[0]?.id) {
                 this.showNoAssignments('No active tab found');
                 return;
             }
 
-            // Get assignments from background script
             const response = await chrome.runtime.sendMessage({ type: 'GET_ASSIGNMENTS' });
             
             if (!response || !response.assignments) {
@@ -147,7 +163,14 @@ class PopupManager {
             this.updateAssignmentCount();
             this.renderAssignments();
 
+            // Store the fresh assignments
+            await chrome.storage.local.set({
+                currentAssignments: this.assignments,
+                lastUpdate: now.toISOString()
+            });
+
         } catch (error) {
+            console.error('Failed to load assignments:', error);
             this.showNoAssignments('Failed to load assignments');
         }
     }
@@ -182,6 +205,9 @@ class PopupManager {
         const priorityClass = this.getPriorityClass(assignment.priorityScore);
         const dueDate = this.formatDate(assignment.dueDate);
         const timeStatus = this.getTimeStatus(dueDate);
+        const points = assignment.maxPoints ?
+            `${assignment.points}/${assignment.maxPoints} points` :
+            `${assignment.points} points`;
 
         return `
             <div class="assignment-card ${priorityClass}">
@@ -195,7 +221,7 @@ class PopupManager {
                     <span class="due-date">Due: ${dueDate}</span>
                     <span class="time-remaining ${timeStatus.class}">${timeStatus.text}</span>
                 </div>
-                <div class="points">${assignment.points} points</div>
+                <div class="points">${points}</div>
             </div>
         `;
     }

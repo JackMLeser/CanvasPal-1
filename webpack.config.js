@@ -39,13 +39,6 @@ module.exports = {
                 generator: {
                     filename: '[path][name][ext]'
                 }
-            },
-            {
-                test: /\.(png|webp|jpg|jpeg)$/i,
-                type: 'asset/resource',
-                generator: {
-                    filename: 'icons/[name][ext]'
-                }
             }
         ]
     },
@@ -85,8 +78,19 @@ module.exports = {
                         return JSON.stringify(manifest, null, 2);
                     }
                 },
-                { from: 'icons/*.{png,webp}', to: 'icons/[name][ext]' },
-                { from: 'Prototype/style/CanvasPAL_logo.webp', to: 'icons/CanvasPAL_logo.webp' }
+                // Copy icons
+                { 
+                    from: 'icons/icon16.png',
+                    to: 'icons/icon16.png'
+                },
+                { 
+                    from: 'icons/icon48.png',
+                    to: 'icons/icon48.png'
+                },
+                { 
+                    from: 'icons/icon128.png',
+                    to: 'icons/icon128.png'
+                }
             ]
         })
     ],
@@ -105,4 +109,4 @@ module.exports = {
     mode: 'production',
     devtool: 'source-map',
     target: 'web'  // Ensure proper web environment targeting
-};
+}

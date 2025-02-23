@@ -1,18 +1,7 @@
 console.log('CanvasPal content script loaded');
 
 import { initializeButton } from './canvasButton';
-import { initializeScrapers, DashboardScraper, GradeDataScraper, DashboardData, GradeData } from './scrapers';
-
-interface Assignment {
-    title: string;
-    dueDate: string;
-    courseName: string;
-    type: string;
-    points: number;
-    maxPoints?: number;
-    weight?: number;
-    priorityScore: number;
-}
+import { AssignmentDetector } from '../utils/assignmentDetector';
 
 // Wait for both head and body to be available
 const waitForElements = () => {
@@ -28,70 +17,6 @@ const waitForElements = () => {
     });
 };
 
-// Process scraped data and send to background
-const processScrapedData = (dashboardData: DashboardData[] | null, gradeData: GradeData | null) => {
-    console.log('Processing scraped data:', { dashboardData, gradeData });
-    
-    const assignments: Assignment[] = [];
-
-    // Process dashboard assignments
-    if (dashboardData) {
-        for (const course of dashboardData) {
-            for (const assignment of course.assignments) {
-                assignments.push({
-                    title: assignment.name,
-                    dueDate: assignment.dueDate,
-                    courseName: course.courseName,
-                    type: assignment.type,
-                    points: 0, // Will be updated with grade data
-                    priorityScore: 0.5 // Default score
-                });
-            }
-        }
-    }
-
-    // Update assignments with grade data
-    if (gradeData) {
-        const gradeMap = new Map<string, {
-            points: number;
-            pointsPossible: number;
-            weight?: number;
-        }>();
-
-        gradeData.assignments.forEach(assignment => {
-            gradeMap.set(assignment.name, {
-                points: assignment.points,
-                pointsPossible: assignment.pointsPossible,
-                weight: assignment.weight
-            });
-        });
-
-        assignments.forEach(assignment => {
-            const gradeInfo = gradeMap.get(assignment.title);
-            if (gradeInfo) {
-                assignment.points = gradeInfo.points;
-                assignment.maxPoints = gradeInfo.pointsPossible;
-                assignment.weight = gradeInfo.weight;
-            }
-        });
-    }
-
-    console.log('Processed assignments:', assignments);
-
-    // Send assignments to background script
-    if (assignments.length > 0) {
-        console.log('Sending assignments to background script');
-        chrome.runtime.sendMessage({
-            type: 'ASSIGNMENTS_UPDATE',
-            data: assignments
-        }, (response) => {
-            console.log('Background script response:', response);
-        });
-    } else {
-        console.log('No assignments to send');
-    }
-};
-
 // Initialize the extension
 const initialize = async () => {
     try {
@@ -101,56 +26,86 @@ const initialize = async () => {
         // Initialize button and popup
         initializeButton();
 
-        // Initialize scrapers
-        console.log('Initializing scrapers');
-        initializeScrapers();
+        // Initialize assignment detector
+        const detector = new AssignmentDetector();
 
-        // Listen for scraped data
+        // Listen for messages
         chrome.runtime.onMessage.addListener((message: { type: string; data: any }, sender, sendResponse) => {
-            console.log('Received message:', message);
+            console.log('Content script received message:', message);
             try {
-                if (message.type === 'DASHBOARD_DATA' || message.type === 'GRADE_DATA') {
-                    const dashboardData = message.type === 'DASHBOARD_DATA' ? message.data as DashboardData[] : null;
-                    const gradeData = message.type === 'GRADE_DATA' ? message.data as GradeData : null;
-                    processScrapedData(dashboardData, gradeData);
+                switch (message.type) {
+                    case 'REFRESH_ASSIGNMENTS':
+                        // Detect assignments and send to background
+                        console.log('Refreshing assignments');
+                        detector.detectAssignments().then(assignments => {
+                            console.log('Detected assignments:', assignments);
+                            chrome.runtime.sendMessage({
+                                type: 'DASHBOARD_DATA',
+                                data: [{
+                                    courseName: 'Current Course',
+                                    assignments: assignments.map(a => ({
+                                        name: a.title,
+                                        dueDate: a.dueDate,
+                                        type: a.type
+                                    }))
+                                }]
+                            });
+
+                            // Also send grade data
+                            chrome.runtime.sendMessage({
+                                type: 'GRADE_DATA',
+                                data: {
+                                    courseName: 'Current Course',
+                                    assignments: assignments.map(a => ({
+                                        name: a.title,
+                                        points: a.points,
+                                        pointsPossible: a.maxPoints,
+                                        weight: a.gradeWeight
+                                    }))
+                                }
+                            });
+                        }).catch(error => {
+                            console.error('Error detecting assignments:', error);
+                        });
+                        break;
                 }
             } catch (error) {
-                console.error('Error processing scraped data:', error);
+                console.error('Error processing message:', error);
             }
         });
 
-        // Set up periodic refresh
-        setInterval(() => {
-            console.log('Running periodic refresh');
-            if (document.querySelector('.ic-app')) {
-                const isDashboard = document.querySelector('.dashboard-planner, .planner-container');
-                const isGradesPage = document.querySelector('.student_grades, .gradebook-content');
-
-                if (isDashboard) {
-                    console.log('Refreshing dashboard data');
-                    new DashboardScraper();
-                }
-                if (isGradesPage) {
-                    console.log('Refreshing grades data');
-                    new GradeDataScraper();
-                }
-            }
-        }, 60000); // Refresh every minute
-
-        // Initial scrape
+        // Initial assignment detection
         if (document.querySelector('.ic-app')) {
-            console.log('Running initial scrape');
-            const isDashboard = document.querySelector('.dashboard-planner, .planner-container');
-            const isGradesPage = document.querySelector('.student_grades, .gradebook-content');
+            console.log('Running initial assignment detection');
+            detector.detectAssignments().then(assignments => {
+                console.log('Initial assignments detected:', assignments);
+                chrome.runtime.sendMessage({
+                    type: 'DASHBOARD_DATA',
+                    data: [{
+                        courseName: 'Current Course',
+                        assignments: assignments.map(a => ({
+                            name: a.title,
+                            dueDate: a.dueDate,
+                            type: a.type
+                        }))
+                    }]
+                });
 
-            if (isDashboard) {
-                console.log('Initial dashboard scrape');
-                new DashboardScraper();
-            }
-            if (isGradesPage) {
-                console.log('Initial grades scrape');
-                new GradeDataScraper();
-            }
+                chrome.runtime.sendMessage({
+                    type: 'GRADE_DATA',
+                    data: {
+                        courseName: 'Current Course',
+                        assignments: assignments.map(a => ({
+                            name: a.title,
+                            points: a.points,
+                            pointsPossible: a.maxPoints,
+                            weight: a.gradeWeight
+                        }))
+                    }
+                });
+            }).catch(error => {
+                console.error('Error in initial assignment detection:', error);
+            });
         }
 
     } catch (error) {
@@ -163,4 +118,3 @@ if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initialize);
 } else {
     initialize();
-}
