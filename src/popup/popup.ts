@@ -1,4 +1,9 @@
-import { Assignment } from '../types/models';
+import { Assignment, GradeData } from '../types/models';
+
+interface GradeResponse {
+    success: boolean;
+    grades: GradeData | null;
+}
 
 class PopupManager {
     private assignments: Assignment[] = [];
@@ -24,18 +29,32 @@ class PopupManager {
                 return;
             }
 
-            chrome.tabs.sendMessage(tabs[0].id, { action: "getAssignments" }, (response) => {
+            chrome.tabs.sendMessage(tabs[0].id, { action: "getGrades" }, (response) => {
                 if (chrome.runtime.lastError) {
                     this.showNoAssignments('Error communicating with page');
                     return;
                 }
 
-                if (!response || !response.assignments || response.assignments.length === 0) {
+                if (!response || !response.success) {
+                    this.showNoAssignments('No grades found');
+                    return;
+                }
+
+                if (!response.grades || !response.grades.assignments) {
                     this.showNoAssignments('No assignments found');
                     return;
                 }
 
-                this.assignments = response.assignments;
+                this.assignments = response.grades.assignments.map((assignment: GradeData['assignments'][0]) => ({
+                    title: assignment.name,
+                    course: response.grades.courseName,
+                    dueDate: new Date(), // Since grade data doesn't include due dates
+                    priorityScore: 0, // Calculate this based on grade data
+                    completed: false,
+                    type: 'assignment',
+                    points: assignment.points,
+                    maxPoints: assignment.pointsPossible
+                }));
                 this.renderAssignments();
             });
 

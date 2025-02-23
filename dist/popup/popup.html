@@ -2,47 +2,27 @@
 <html>
 <head>
     <title>CanvasPal</title>
-    <link rel="stylesheet" href="styles/popup.css">
-    <link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="popup.css">
+    <link href="https://fonts.googleapis.com/css?family=Lato" rel="stylesheet">
 </head>
 <body>
-    <button id="toggleButton" class="toggle-button">
-        <span id="assignmentCount">Loading...</span>
-    </button>
-    <div id="popupContent" class="container hidden">
+    <div class="container">
         <header>
+            <h1>CanvasPAL</h1>
             <div class="logo">
-                <img src="../icons/icon48.png" alt="CanvasPal Logo">
-            </div>
-            <h1>CanvasPal</h1>
-            <div class="status-bar">
-                <span id="sync-status">Synced</span>
-                <span id="data-freshness">Updated: Just now</span>
+                <img src="../icons/CanvasPAL_logo.webp" alt="CanvasPAL Logo" />
             </div>
         </header>
-
-        <div class="filters">
-            <select id="typeFilter">
-                <option value="all">All Types</option>
-                <option value="assignment">Assignments</option>
-                <option value="quiz">Quizzes</option>
-                <option value="discussion">Discussions</option>
-                <option value="announcement">Announcements</option>
-            </select>
-            <select id="priorityFilter">
-                <option value="all">All Priorities</option>
-                <option value="high">High Priority</option>
-                <option value="medium">Medium Priority</option>
-                <option value="low">Low Priority</option>
-            </select>
-        </div>
-
         <div class="assignment-list" id="assignmentList">
             <!-- Assignments will be populated here -->
         </div>
 
         <div class="settings-button">
-            <button id="openSettings">⚙️ Settings</button>
+            <button id="openSettings">Settings</button>
+        </div>
+
+        <div class="status-bar">
+            <span id="data-freshness">Updated: Just Now</span>
         </div>
     </div>
     <script src="popup.js"></script>

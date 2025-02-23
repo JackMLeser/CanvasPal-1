@@ -11,25 +11,56 @@ function scrapeGrades(): GradeData | null {
     console.log('CanvasPal: Starting grade scraping...');
     
     try {
-        // Try multiple selectors for course title
+        // Check if we're on a grades page
+        const pageTitle = document.querySelector('h1.ic-Action-header__Heading')?.textContent;
+        if (!pageTitle?.includes('Grades')) {
+            console.warn('CanvasPal: Not on a grades page');
+            return null;
+        }
+
+        // Updated selectors for course title, including the page title which always contains the course name
         const courseTitleSelectors = [
+            'h1.page-title',
             '.course-title',
             '.ig-header .name',
             '.course_name',
             '#course_name',
-            '.course-nav-link'
+            '.course-nav-link',
+            // Add FGCU specific selectors
+            'title',  // The page title contains course name
+            '.context_title'
         ];
         
-        const courseTitle = courseTitleSelectors
-            .map(selector => document.querySelector(selector))
-            .find(el => el?.textContent?.trim())?.textContent?.trim() || 'Unknown Course';
+        let courseTitle = '';
+        for (const selector of courseTitleSelectors) {
+            const el = document.querySelector(selector);
+            if (el?.textContent?.trim()) {
+                courseTitle = el.textContent.trim();
+                // If we found it in the page title, extract just the course name
+                if (selector === 'title') {
+                    const match = courseTitle.match(/: (.+?) -/);
+                    if (match) {
+                        courseTitle = match[1];
+                    }
+                }
+                break;
+            }
+        }
 
-        // Try multiple selectors for grade table
+        if (!courseTitle) {
+            courseTitle = 'Unknown Course';
+        }
+
+        // Updated selectors for grade table
         const gradeTableSelectors = [
-            '.student_assignments',
             '#grades_summary',
+            '.student_assignments',
             '.assignment-grades',
-            '.gradebook-table'
+            '.gradebook-table',
+            // Add FGCU specific selectors
+            '.student_assignment_table',
+            '#assignments-not-weighted',
+            '#assignments-weighted'
         ];
         
         const gradeTable = gradeTableSelectors
@@ -43,47 +74,96 @@ function scrapeGrades(): GradeData | null {
 
         console.log('CanvasPal: Found course:', courseTitle);
 
-        // Try multiple selectors for assignment rows
+        // Updated selectors for assignment rows
         const assignmentRowSelectors = [
             'tr.student_assignment',
             '.assignment-row',
             '.slick-row',
-            '.grade-values'
+            '.grade-values',
+            // Add FGCU specific selectors
+            '.group_total',
+            '.group_grade',
+            '.assignment_graded'
         ];
         
         let assignments: GradeAssignment[] = [];
         for (const selector of assignmentRowSelectors) {
             const rows = gradeTable.querySelectorAll(selector);
             if (rows.length > 0) {
-                assignments = Array.from(rows).map(row => {
-                    const nameSelectors = ['.assignment_name', '.title', '.assignment-name'];
-                    const gradeSelectors = ['.grade', '.score', '.points'];
-                    const possibleSelectors = ['.points_possible', '.max-points'];
-                    const weightSelectors = ['.assignment_weight', '.weight'];
+                assignments = Array.from(rows)
+                    .filter(row => {
+                        // Skip rows that are muted or pending
+                        const isMuted = row.getAttribute('data-muted') === 'true';
+                        const isPending = row.getAttribute('data-pending_quiz') === 'true';
+                        const isGroupTotal = row.classList.contains('group_total');
+                        const isFinalGrade = row.classList.contains('final_grade');
+                        return !isMuted && !isPending && !isGroupTotal && !isFinalGrade;
+                    })
+                    .map(row => {
+                        const nameSelectors = [
+                            '.assignment_name',
+                            '.title',
+                            '.assignment-name',
+                            '.assignment_title',
+                            '.name'
+                        ];
+                        const gradeSelectors = [
+                            '.grade',
+                            '.score',
+                            '.points',
+                            '.assignment_score',
+                            '.total_grade'
+                        ];
+                        const possibleSelectors = [
+                            '.points_possible',
+                            '.max-points',
+                            '.total_possible'
+                        ];
+                        const weightSelectors = [
+                            '.assignment_weight',
+                            '.weight',
+                            '.group_weight'
+                        ];
 
-                    const name = nameSelectors
-                        .map(s => row.querySelector(s))
-                        .find(el => el?.textContent?.trim())?.textContent?.trim() || 'Unknown Assignment';
-                    
-                    const points = parseFloat(gradeSelectors
-                        .map(s => row.querySelector(s))
-                        .find(el => el?.textContent?.trim())?.textContent?.trim() || '0');
-                    
-                    const pointsPossible = parseFloat(possibleSelectors
-                        .map(s => row.querySelector(s))
-                        .find(el => el?.textContent?.trim())?.textContent?.trim() || '0');
-                    
-                    const weight = parseFloat(weightSelectors
-                        .map(s => row.querySelector(s))
-                        .find(el => el?.textContent?.trim())?.textContent?.trim() || '0');
+                        // Get assignment name from link or text
+                        const nameLink = row.querySelector('th.title a');
+                        const name = (nameLink?.textContent?.trim() ||
+                            nameSelectors
+                                .map(s => row.querySelector(s))
+                                .find(el => el?.textContent?.trim())?.textContent?.trim() ||
+                            'Unknown Assignment');
+                        
+                        // Get points, handling special cases
+                        let points = 0;
+                        const scoreHolder = row.querySelector('.score_holder');
+                        if (scoreHolder) {
+                            const originalPoints = scoreHolder.querySelector('.original_points')?.textContent?.trim();
+                            if (originalPoints) {
+                                points = parseFloat(originalPoints) || 0;
+                            } else {
+                                points = parseFloat(gradeSelectors
+                                    .map(s => row.querySelector(s))
+                                    .find(el => el?.textContent?.trim())?.textContent?.trim()?.replace(/[^0-9.-]/g, '') || '0');
+                            }
+                        }
+                        
+                        // Get points possible
+                        const pointsPossible = parseFloat(possibleSelectors
+                            .map(s => row.querySelector(s))
+                            .find(el => el?.textContent?.trim())?.textContent?.trim()?.replace(/[^0-9.-]/g, '') || '0');
+                        
+                        // Get weight
+                        const weight = parseFloat(weightSelectors
+                            .map(s => row.querySelector(s))
+                            .find(el => el?.textContent?.trim())?.textContent?.trim()?.replace(/[^0-9.-]/g, '') || '0');
 
-                    return {
-                        name,
-                        points,
-                        pointsPossible,
-                        weight
-                    };
-                });
+                        return {
+                            name,
+                            points,
+                            pointsPossible,
+                            weight
+                        };
+                    });
                 break;
             }
         }
@@ -121,8 +201,24 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 });
 
 // Initialize grade scraping when page loads
+const initializeScraping = () => {
+    // Wait for the grades table to be visible
+    const observer = new MutationObserver((mutations, obs) => {
+        const gradesTable = document.getElementById('grades_summary');
+        if (gradesTable) {
+            obs.disconnect();
+            scrapeGrades();
+        }
+    });
+
+    observer.observe(document.body, {
+        childList: true,
+        subtree: true
+    });
+};
+
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', scrapeGrades);
+    document.addEventListener('DOMContentLoaded', initializeScraping);
 } else {
-    scrapeGrades();
+    initializeScraping();
 }

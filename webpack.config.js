@@ -31,6 +31,13 @@ module.exports = {
                     }
                 ],
                 exclude: /node_modules/
+            },
+            {
+                test: /\.(png|webp|jpg|jpeg)$/i,
+                type: 'asset/resource',
+                generator: {
+                    filename: 'icons/[name][ext]'
+                }
             }
         ]
     },
@@ -46,7 +53,8 @@ module.exports = {
                 { from: 'src/settings/settings.html', to: 'settings/settings.html' },
                 { from: 'src/settings/settings.css', to: 'settings/settings.css' },
                 { from: 'manifest.json', to: 'manifest.json' },
-                { from: 'icons/*.png', to: 'icons/[name][ext]' }
+                { from: 'icons/*.{png,webp}', to: 'icons/[name][ext]' },
+                { from: 'Prototype/style/CanvasPAL_logo.webp', to: 'icons/CanvasPAL_logo.webp' }
             ]
         })
     ],
