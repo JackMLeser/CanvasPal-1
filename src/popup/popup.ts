@@ -29,42 +29,28 @@ class PopupManager {
                 return;
             }
 
-            chrome.tabs.sendMessage(tabs[0].id, { action: "getGrades" }, (response) => {
-                if (chrome.runtime.lastError) {
-                    this.showNoAssignments('Error communicating with page');
-                    return;
+            // Get assignments from background script
+            const response = await chrome.runtime.sendMessage({ type: 'GET_ASSIGNMENTS' });
+            
+            if (!response || !response.assignments) {
+                // Check if we're on a Canvas page
+                const url = tabs[0]?.url;
+                if (url?.includes('.instructure.com')) {
+                    if (url.includes('/grades')) {
+                        this.showNoAssignments('Loading grades...');
+                        // Trigger a refresh
+                        await chrome.runtime.sendMessage({ type: 'REFRESH_ASSIGNMENTS' });
+                    } else {
+                        this.showNoAssignments('Please navigate to a course grades page');
+                    }
+                } else {
+                    this.showNoAssignments('Please navigate to Canvas');
                 }
+                return;
+            }
 
-                if (!response || !response.success) {
-                    // Check if we're on the main Canvas page
-                    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-                        const url = tabs[0]?.url;
-                        if (url && url.endsWith('.instructure.com/')) {
-                            this.showNoAssignments('Please navigate to a course grades page');
-                        } else {
-                            this.showNoAssignments('No grades found');
-                        }
-                    });
-                    return;
-                }
-
-                if (!response.grades || !response.grades.assignments) {
-                    this.showNoAssignments('No assignments found');
-                    return;
-                }
-
-                this.assignments = response.grades.assignments.map((assignment: GradeData['assignments'][0]) => ({
-                    title: assignment.name,
-                    course: response.grades.courseName,
-                    dueDate: new Date(), // Since grade data doesn't include due dates
-                    priorityScore: 0, // Calculate this based on grade data
-                    completed: false,
-                    type: 'assignment',
-                    points: assignment.points,
-                    maxPoints: assignment.pointsPossible
-                }));
-                this.renderAssignments();
-            });
+            this.assignments = response.assignments;
+            this.renderAssignments();
 
         } catch (error) {
             this.showNoAssignments('Failed to load assignments');

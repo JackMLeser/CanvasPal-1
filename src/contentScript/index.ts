@@ -1,3 +1,35 @@
+import { Assignment } from '../types/models';
+
+// Listen for messages from the background script
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    try {
+        switch (message.type) {
+            case 'SETTINGS_UPDATED':
+                // Handle settings update
+                console.log('Settings updated:', message.settings);
+                sendResponse({ success: true });
+                break;
+case 'REFRESH_ASSIGNMENTS':
+    // Re-run scrapers
+    if (document.querySelector('.ic-Dashboard-header, .context_module')) {
+        new DashboardScraper();
+    }
+    new GradeDataScraper();
+    sendResponse({ success: true });
+    break;
+                break;
+
+            default:
+                console.warn('Unknown message type:', message.type);
+                sendResponse({ error: 'Unknown message type' });
+        }
+    } catch (error) {
+        console.error('Error handling message:', error);
+        sendResponse({ error: 'Internal error' });
+    }
+    return true; // Keep the message channel open for async response
+});
+
 export interface GradeData {
     courseName: string;
     assignments: {
@@ -19,24 +51,21 @@ export interface DashboardData {
 
 export class DashboardScraper {
     constructor() {
-        // Check if we're on a Canvas page
-        if (document.querySelector('.ic-app')) {
-            try {
-                const data = this.scrapeDashboardData();
-                if (typeof chrome !== 'undefined' && chrome.runtime) {
-                    chrome.runtime.sendMessage({ type: 'dashboardData', data }).catch(err => {
-                        console.error('Failed to send dashboard data:', err);
-                    });
-                }
-            } catch (err) {
-                console.error('Failed to scrape dashboard data:', err);
-                if (typeof chrome !== 'undefined' && chrome.runtime) {
-                    chrome.runtime.sendMessage({
-                        type: 'error',
-                        error: 'Failed to scrape dashboard data'
-                    });
-                }
-            }
+        this.initialize();
+    }
+
+    private initialize() {
+        try {
+            const data = this.scrapeDashboardData();
+            chrome.runtime.sendMessage({ type: 'DASHBOARD_DATA', data }).catch(err => {
+                console.error('Failed to send dashboard data:', err);
+            });
+        } catch (err) {
+            console.error('Failed to scrape dashboard data:', err);
+            chrome.runtime.sendMessage({
+                type: 'ERROR',
+                error: 'Failed to scrape dashboard data'
+            }).catch(console.error);
         }
     }
 
@@ -79,30 +108,27 @@ export class DashboardScraper {
 
 export class GradeDataScraper {
     constructor() {
-        // Check if we're on a grades page using multiple indicators
-        const isGradesPage = this.isGradesPage();
-        if (isGradesPage) {
+        this.initialize();
+    }
+
+    private initialize() {
+        if (this.isGradesPage()) {
             try {
                 const data = this.scrapeGradeData();
-                if (typeof chrome !== 'undefined' && chrome.runtime) {
-                    chrome.runtime.sendMessage({ type: 'gradeData', data }).catch(err => {
-                        console.error('Failed to send grade data:', err);
-                    });
-                }
+                chrome.runtime.sendMessage({ type: 'GRADE_DATA', data }).catch(err => {
+                    console.error('Failed to send grade data:', err);
+                });
             } catch (err) {
                 console.error('Failed to scrape grade data:', err);
-                if (typeof chrome !== 'undefined' && chrome.runtime) {
-                    chrome.runtime.sendMessage({ 
-                        type: 'error', 
-                        error: 'Failed to scrape grade data' 
-                    });
-                }
+                chrome.runtime.sendMessage({ 
+                    type: 'ERROR', 
+                    error: 'Failed to scrape grade data' 
+                }).catch(console.error);
             }
         }
     }
 
     private isGradesPage(): boolean {
-        // Multiple ways to detect if we're on a grades page
         const pageTitle = document.querySelector('h1.ic-Action-header__Heading')?.textContent;
         const hasGradesInUrl = window.location.pathname.includes('/grades');
         const hasGradesTable = document.getElementById('grades_summary') !== null;
@@ -113,7 +139,6 @@ export class GradeDataScraper {
 
     public scrapeGradeData(): GradeData {
         try {
-            // Try multiple selectors for course title
             const courseTitleSelectors = [
                 '.course-title',
                 'h2.course-title',
@@ -133,7 +158,6 @@ export class GradeDataScraper {
             }
 
             if (!courseName) {
-                // Try getting from breadcrumb or page title
                 const breadcrumb = document.querySelector('.ic-app-crumbs__title');
                 if (breadcrumb?.textContent) {
                     courseName = breadcrumb.textContent.trim();
@@ -145,15 +169,7 @@ export class GradeDataScraper {
             const assignments: GradeData['assignments'] = [];
             const assignmentRows = document.querySelectorAll('.student_assignment, .assignment_graded');
 
-            if (assignmentRows.length === 0) {
-                console.warn('No assignment rows found');
-            }
-
-            console.log('Found', assignmentRows.length, 'assignment rows');
-        
-            // Process each assignment row
             assignmentRows.forEach(row => {
-                // Try multiple selectors for assignment name
                 const nameSelectors = ['.title a', '.title', '.assignment_name'];
                 let name = '';
                 for (const selector of nameSelectors) {
@@ -168,7 +184,6 @@ export class GradeDataScraper {
                 const possibleText = row.querySelector('.points_possible, .total-points')?.textContent;
                 const weightText = row.querySelector('.assignment_group .group_weight, .weight')?.textContent;
             
-                // Handle special cases
                 const points = gradeText === '-' || gradeText === 'not a number' ? 0 : this.parseNumber(gradeText);
                 const pointsPossible = possibleText === 'also not a number' ? 0 : this.parseNumber(possibleText);
                 const weight = weightText ? this.parseNumber(weightText.replace('%', '')) : undefined;
@@ -177,8 +192,6 @@ export class GradeDataScraper {
                     assignments.push({ name, points, pointsPossible, weight });
                 }
             });
-            
-            console.log('Extracted assignments:', assignments);
             
             return { courseName, assignments };
         } catch (err) {
@@ -194,25 +207,73 @@ export class GradeDataScraper {
     }
 }
 
-// Initialize scrapers based on page content rather than just URL
+// Initialize message handling
+const setupMessageHandling = () => {
+    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+        try {
+            console.log('Content script received message:', message);
+            
+            switch (message.type) {
+                case 'SETTINGS_UPDATED':
+                    console.log('Settings updated:', message.settings);
+                    sendResponse({ success: true });
+                    break;
+
+                case 'REFRESH_ASSIGNMENTS':
+                    console.log('Refreshing assignments');
+                    initializeScrapers();
+                    sendResponse({ success: true });
+                    break;
+
+                default:
+                    console.warn('Unknown message type:', message.type);
+                    sendResponse({ error: 'Unknown message type' });
+            }
+        } catch (error) {
+            console.error('Error handling message:', error);
+            sendResponse({ error: 'Internal error' });
+        }
+        return true; // Keep the message channel open for async response
+    });
+};
+
+// Initialize scrapers
 const initializeScrapers = () => {
     // Check if we're on a Canvas page
     if (!document.querySelector('.ic-app')) {
         return;
     }
 
-    // Initialize grade scraper if we detect grade elements
-    const gradeScraperInstance = new GradeDataScraper();
-
-    // Initialize dashboard scraper if we detect dashboard elements
+    // Initialize scrapers based on page type
     if (document.querySelector('.ic-Dashboard-header, .context_module')) {
         new DashboardScraper();
+    }
+    new GradeDataScraper();
+};
+
+// Main initialization
+const initialize = () => {
+    setupMessageHandling();
+    
+    // Wait for DOM to be ready before initializing scrapers
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeScrapers();
+            // Notify background script after initialization
+            chrome.runtime.sendMessage({ type: 'CONTENT_SCRIPT_READY' })
+                .catch(error => console.error('Failed to send ready message:', error));
+        });
+    } else {
+        initializeScrapers();
+        // Notify background script after initialization
+        chrome.runtime.sendMessage({ type: 'CONTENT_SCRIPT_READY' })
+            .catch(error => console.error('Failed to send ready message:', error));
     }
 };
 
 // Run initialization when DOM is ready
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initializeScrapers);
+    document.addEventListener('DOMContentLoaded', initialize);
 } else {
-    initializeScrapers();
+    initialize();
 }

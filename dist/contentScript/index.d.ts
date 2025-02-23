@@ -17,10 +17,12 @@ export interface DashboardData {
 }
 export declare class DashboardScraper {
     constructor();
+    private initialize;
     scrapeDashboardData(): DashboardData[];
 }
 export declare class GradeDataScraper {
     constructor();
+    private initialize;
     private isGradesPage;
     scrapeGradeData(): GradeData;
     private parseNumber;

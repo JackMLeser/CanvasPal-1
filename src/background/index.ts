@@ -26,6 +26,7 @@ class BackgroundService {
     private detector: BackgroundAssignmentDetector;
     private priorityCalculator: BackgroundPriorityCalculator;
     private logger: Logger;
+    private contentScriptReady = false;
 
     constructor() {
         this.settings = {
@@ -100,6 +101,10 @@ class BackgroundService {
                     break;
 
                 case 'GET_ASSIGNMENTS':
+                    if (!this.contentScriptReady) {
+                        sendResponse({ assignments: [], message: 'Loading assignments...' });
+                        return;
+                    }
                     const assignments = await this.getAssignments();
                     sendResponse({ assignments });
                     break;
@@ -125,6 +130,16 @@ class BackgroundService {
                 case 'DASHBOARD_DATA':
                     this.handleDashboardData(message.data);
                     sendResponse({ success: true });
+                    break;
+
+                case 'CONTENT_SCRIPT_READY':
+                    this.logger.info('Content script ready');
+                    this.contentScriptReady = true;
+                    sendResponse({ success: true });
+                    // Wait a bit for the page to fully load before fetching assignments
+                    setTimeout(() => {
+                        void this.refreshAssignments();
+                    }, 1000);
                     break;
 
                 default:

@@ -11,6 +11,7 @@ declare class BackgroundService {
     private detector;
     private priorityCalculator;
     private logger;
+    private contentScriptReady;
     constructor();
     initialize(): Promise<void>;
     private handleMessage;

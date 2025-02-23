@@ -8,10 +8,12 @@
     "activeTab",
     "alarms",
     "notifications",
-    "commands"
+    "commands",
+    "scripting"
   ],
   "host_permissions": [
-    "*://*.instructure.com/*"
+    "*://*.instructure.com/*",
+    "*://*.canvas.com/*"
   ],
   "background": {
     "service_worker": "dist/background/index.js"
@@ -33,10 +35,11 @@
   "content_scripts": [
     {
       "matches": [
-        "*://*.instructure.com/*"
+        "*://*.instructure.com/*",
+        "*://*.canvas.com/*"
       ],
       "js": ["dist/contentScript/index.js"],
-      "run_at": "document_idle"
+      "run_at": "document_start"
     }
   ],
   "commands": {

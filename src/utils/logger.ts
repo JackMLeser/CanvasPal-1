@@ -98,29 +98,33 @@ export class Logger {
     }
 
     private formatLogData(data: any): any {
-        if (data instanceof Element) {
-            return {
-                tagName: data.tagName,
-                id: data.id,
-                className: data.className,
-                textContent: data.textContent?.substring(0, 100) + '...',
-                html: data.outerHTML?.substring(0, 200) + '...'
-            };
-        }
-
-        if (Array.isArray(data)) {
-            return data.map(item => this.formatLogData(item));
-        }
-
-        if (data && typeof data === 'object') {
-            const formatted: Record<string, any> = {};
-            for (const [key, value] of Object.entries(data)) {
-                formatted[key] = this.formatLogData(value);
+        try {
+            if (Array.isArray(data)) {
+                return data.map(item => this.formatLogData(item));
             }
-            return formatted;
-        }
 
-        return data;
+            if (data && typeof data === 'object') {
+                // Check if it's an Error object
+                if (data instanceof Error) {
+                    return {
+                        name: data.name,
+                        message: data.message,
+                        stack: data.stack
+                    };
+                }
+
+                // Handle regular objects
+                const formatted: Record<string, any> = {};
+                for (const [key, value] of Object.entries(data)) {
+                    formatted[key] = this.formatLogData(value);
+                }
+                return formatted;
+            }
+
+            return data;
+        } catch (error) {
+            return '[Error formatting log data]';
+        }
     }
 
     private async saveLogs(entry: LogEntry): Promise<void> {
@@ -149,7 +153,7 @@ export class Logger {
     private notifyError(entry: LogEntry): void {
         chrome.notifications.create({
             type: 'basic',
-            iconUrl: 'icons/icon128.png',
+            iconUrl: '/dist/icons/icon128.png',
             title: 'CanvasPal Error',
             message: entry.message,
             priority: 2
