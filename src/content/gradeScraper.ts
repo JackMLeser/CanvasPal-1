@@ -190,18 +190,45 @@ function scrapeGrades(): GradeData | null {
     }
 }
 
-// Message listener for grade data requests
+// Initialize settings
+async function initializeSettings(): Promise<void> {
+    try {
+        const result = await chrome.storage.sync.get('settings');
+        currentSettings = result.settings;
+        console.log('CanvasPal: Settings loaded:', currentSettings);
+    } catch (error) {
+        console.error('CanvasPal: Error loading settings:', error);
+    }
+}
+
+// Message listeners
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    // Handle grade requests
     if (message.action === 'getGrades') {
         console.log('CanvasPal: Received grade request');
         const grades = scrapeGrades();
-        sendResponse({ 
+        sendResponse({
             grades,
             success: grades !== null
         });
-        return true;  // Indicates we wish to send a response asynchronously
+        return true;
+    }
+    
+    // Handle settings updates
+    if (message.type === 'SETTINGS_UPDATED') {
+        console.log('CanvasPal: Received settings update:', message.settings);
+        currentSettings = message.settings;
+        // Re-run grade scraping with new settings if we're on a grades page
+        if (document.querySelector('h1.ic-Action-header__Heading')?.textContent?.includes('Grades')) {
+            scrapeGrades();
+        }
+        sendResponse({ success: true });
+        return true;
     }
 });
+
+// Load settings on initialization
+initializeSettings();
 
 // Initialize grade scraping when page loads
 const initializeScraping = () => {
