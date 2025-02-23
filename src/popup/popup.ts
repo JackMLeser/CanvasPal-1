@@ -25,32 +25,8 @@ class PopupManager {
         this.assignmentsButton = document.getElementById('assignmentsButton');
         this.settingsContent = document.getElementById('settingsContent');
 
-        // Debug icon loading in popup
+        // Initialize popup
         console.log('Debug: Popup initialization');
-        console.log('Debug: Chrome runtime state:', {
-            available: !!chrome?.runtime,
-            id: chrome?.runtime?.id,
-            manifest: chrome?.runtime?.getManifest?.()
-        });
-
-        // Set the icon using chrome.runtime.getURL
-        const logoImg = document.getElementById('canvaspal-logo') as HTMLImageElement;
-        if (logoImg) {
-            console.log('Debug: Setting popup icon');
-            const iconUrl = chrome.runtime.getURL('icons/icon16.png');
-            console.log('Debug: Using icon URL:', iconUrl);
-            logoImg.src = iconUrl;
-            
-            // Add load and error handlers
-            logoImg.onload = () => {
-                console.log('Debug: Popup icon loaded successfully');
-            };
-            logoImg.onerror = (error) => {
-                console.error('Debug: Popup icon failed to load:', error);
-            };
-        } else {
-            console.error('Debug: Popup icon element not found');
-        }
 
         this.initializeEventListeners();
         this.loadSettings();

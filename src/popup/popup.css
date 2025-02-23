@@ -92,13 +92,6 @@ body {
   gap: 16px;
 }
 
-.logo {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin: 0;
-}
-
 .header-title {
   flex: 1;
 }
@@ -507,38 +500,6 @@ body {
 
   .back-button:hover {
     color: #409CFF;
-  }
-}
-
-/* Logo */
-.logo-button {
-  background: none;
-  border: none;
-  padding: 0;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s ease;
-}
-
-.logo-button:hover {
-  transform: scale(1.1);
-}
-
-#canvaspal-logo {
-  width: 48px;
-  height: 48px;
-  object-fit: contain;
-  margin-left: 12px;
-}
-
-@media (prefers-color-scheme: dark) {
-  .logo-button {
-    background: var(--primary-hover);
-  }
-  .logo-button:hover {
-    background: var(--primary-color);
   }
 }
 

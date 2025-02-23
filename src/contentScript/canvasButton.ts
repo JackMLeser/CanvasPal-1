@@ -257,8 +257,8 @@ const createElements = async (): Promise<Elements | null> => {
             }
 
             .logo-image {
-                width: 16px;
-                height: 16px;
+                width: 0px;
+                height: 0px;
                 border-radius: 4px;
                 border: 1px solid #FFFFFF;
                 padding: 2px;
@@ -388,20 +388,35 @@ const createElements = async (): Promise<Elements | null> => {
                 </div>
             `;
 
-            // Set the logo image src using the extension's icon
-            console.log('Debug: Finding logo image element');
+            // Create popup structure with embedded icon
+            console.log('Debug: Creating popup HTML structure');
+            popup.innerHTML = `
+                <div class="popup-header">
+                    <div class="popup-title">CanvasPAL</div>
+                    <div class="task-count" id="taskCount">0 Tasks</div>
+                    <div class="logo">
+                        <img id="canvaspal-logo"
+                             alt="CanvasPAL Logo"
+                             class="logo-image"
+                             width="24"
+                             height="24"
+                             src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAACXBIWXMAAAsTAAALEwEAmpwYAAAF0WlUWHRYTUw6Y29tLmFkb2JlLnhtcAAAAAAAPD94cGFja2V0IGJlZ2luPSLvu78iIGlkPSJXNU0wTXBDZWhpSHpyZVN6TlRjemtjOWQiPz4gPHg6eG1wbWV0YSB4bWxuczp4PSJhZG9iZTpuczptZXRhLyIgeDp4bXB0az0iQWRvYmUgWE1QIENvcmUgNy4yLWMwMDAgNzkuMWI2NWE3OWI0LCAyMDIyLzA2LzEzLTIyOjAxOjAxICAgICAgICAiPiA8cmRmOlJERiB4bWxuczpyZGY9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkvMDIvMjItcmRmLXN5bnRheC1ucyMiPiA8cmRmOkRlc2NyaXB0aW9uIHJkZjphYm91dD0iIiB4bWxuczp4bXA9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC8iIHhtbG5zOnhtcE1NPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvbW0vIiB4bWxuczpzdEV2dD0iaHR0cDovL25zLmFkb2JlLmNvbS94YXAvMS4wL3NUeXBlL1Jlc291cmNlRXZlbnQjIiB4bWxuczpkYz0iaHR0cDovL3B1cmwub3JnL2RjL2VsZW1lbnRzLzEuMS8iIHhtbG5zOnBob3Rvc2hvcD0iaHR0cDovL25zLmFkb2JlLmNvbS9waG90b3Nob3AvMS4wLyIgeG1wOkNyZWF0b3JUb29sPSJBZG9iZSBQaG90b3Nob3AgMjQuMCAoTWFjaW50b3NoKSIgeG1wOkNyZWF0ZURhdGU9IjIwMjMtMDItMjNUMTU6NTc6MjUtMDU6MDAiIHhtcDpNZXRhZGF0YURhdGU9IjIwMjMtMDItMjNUMTU6NTc6MjUtMDU6MDAiIHhtcDpNb2RpZnlEYXRlPSIyMDIzLTAyLTIzVDE1OjU3OjI1LTA1OjAwIiB4bXBNTTpJbnN0YW5jZUlEPSJ4bXAuaWlkOjA1ZTg5ZjQwLTk2ZDgtNDJhZC1hNmE2LTNmODhhNzJhYzhjYyIgeG1wTU06RG9jdW1lbnRJRD0iYWRvYmU6ZG9jaWQ6cGhvdG9zaG9wOjA1ZTg5ZjQwLTk2ZDgtNDJhZC1hNmE2LTNmODhhNzJhYzhjYyIgeG1wTU06T3JpZ2luYWxEb2N1bWVudElEPSJ4bXAuZGlkOjA1ZTg5ZjQwLTk2ZDgtNDJhZC1hNmE2LTNmODhhNzJhYzhjYyIgZGM6Zm9ybWF0PSJpbWFnZS9wbmciIHBob3Rvc2hvcDpDb2xvck1vZGU9IjMiPiA8eG1wTU06SGlzdG9yeT4gPHJkZjpTZXE+IDxyZGY6bGkgc3RFdnQ6YWN0aW9uPSJjcmVhdGVkIiBzdEV2dDppbnN0YW5jZUlEPSJ4bXAuaWlkOjA1ZTg5ZjQwLTk2ZDgtNDJhZC1hNmE2LTNmODhhNzJhYzhjYyIgc3RFdnQ6d2hlbj0iMjAyMy0wMi0yM1QxNTo1NzoyNS0wNTowMCIgc3RFdnQ6c29mdHdhcmVBZ2VudD0iQWRvYmUgUGhvdG9zaG9wIDI0LjAgKE1hY2ludG9zaCkiLz4gPC9yZGY6U2VxPiA8L3htcE1NOkhpc3Rvcnk+IDwvcmRmOkRlc2NyaXB0aW9uPiA8L3JkZjpSREY+IDwveDp4bXBtZXRhPiA8P3hwYWNrZXQgZW5kPSJyIj8+YcP6EAAAASpJREFUOI2Vkk9Kw0AYxd+kSZqW0kKhFBE8gAvBQ7h24cqtK8FzuHblMTyAC0/gwoWg4MJSaNM0zZ/vG1xpk0zS+sEwzMB7v5n53gwxxvA/6B8XQhAA0DTtJyGEGGPYsqzper2+1XX9TJKkvmmafdd1ryRFUc6llM+2bT/KstwDgPF4/AEA0+n0EwA8z7sNguBuNBrdA0Cv1zsZDAYPhULhDAAMw7jQdf1S07RzAEiSJFoul/eyLJ+qqnoSx/FbGIaPQRB8z+fzt8Vi8RWG4YthGM+SJF3PZrNxkiQRAFBK6Wg0+gQA0zTfCSHUdd0rAHAc55YQgqIo3lNKEUXR42QyeQKAOI6RZRmyLEOe50jTFFmWIU1TUEqRpinSNEWSJKCUYrvdIkkSEEJAKQX+xDcZtYM1GmhGrgAAAABJRU5ErkJggg==" />
+                    </div>
+                </div>
+                <div class="assignments-list" id="assignmentList">
+                    <!-- Assignments will be populated here -->
+                </div>
+                <div class="settings-button">
+                    <button id="settings-button">Settings</button>
+                </div>
+            `;
+
+            // Add load and error handlers for the icon
             const logoImg = popup.querySelector('#canvaspal-logo') as HTMLImageElement;
             if (logoImg) {
-                console.log('Debug: Found logo image element, setting src');
-                const iconUrl = chrome.runtime.getURL('icons/icon16.png');
-                console.log('Debug: Using icon URL:', iconUrl);
-                logoImg.src = iconUrl;
-                
-                // Add load and error handlers
                 logoImg.onload = () => {
                     console.log('Debug: Logo image loaded successfully');
                     console.log('Debug: Logo image properties:', {
-                        src: logoImg.src,
                         width: logoImg.width,
                         height: logoImg.height,
                         complete: logoImg.complete,
