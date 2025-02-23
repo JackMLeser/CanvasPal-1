@@ -30,6 +30,7 @@ class PopupManager {
     private debugManager: DebugManager;
     private typeFilter: string = 'all';
     private priorityFilter: string = 'all';
+    private isPopupVisible: boolean = false;
 
     constructor() {
         this.renderer = new AssignmentRenderer();
@@ -41,6 +42,11 @@ class PopupManager {
     }
 
     private initializeEventListeners(): void {
+        // Add toggle button listener
+        document.getElementById('toggleButton')?.addEventListener('click', () => {
+            this.togglePopup();
+        });
+
         document.getElementById('typeFilter')?.addEventListener('change', (e) => {
             this.typeFilter = (e.target as HTMLSelectElement).value;
             this.renderAssignments();
@@ -71,8 +77,26 @@ class PopupManager {
             } else if (message.type === 'ASSIGNMENTS_UPDATED') {
                 this.assignments = message.assignments;
                 this.renderAssignments();
+                this.updateAssignmentCount();
             }
         });
+    }
+
+    private togglePopup(): void {
+        const popup = document.getElementById('popupContent');
+        if (popup) {
+            this.isPopupVisible = !this.isPopupVisible;
+            popup.classList.toggle('visible');
+            popup.classList.toggle('hidden');
+        }
+    }
+
+    private updateAssignmentCount(): void {
+        const countElement = document.getElementById('assignmentCount');
+        if (countElement) {
+            const incompleteCount = this.assignments.filter(a => !a.completed).length;
+            countElement.textContent = `${incompleteCount} Assignment${incompleteCount !== 1 ? 's' : ''} Due`;
+        }
     }
 
     private async loadAssignments(): Promise<void> {
@@ -88,10 +112,17 @@ class PopupManager {
 
             this.assignments = response.assignments;
             this.updateLastSyncTime();
+            this.updateAssignmentCount();
             this.renderAssignments();
         } catch (error) {
             this.logger.error('Failed to load assignments:', error);
             this.showError('Failed to load assignments. Please try again.');
+            
+            // Update count even in error state
+            const countElement = document.getElementById('assignmentCount');
+            if (countElement) {
+                countElement.textContent = 'Error loading';
+            }
         } finally {
             this.setLoading(false);
         }
