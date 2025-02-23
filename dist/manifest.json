@@ -1,73 +1,70 @@
 {
-  "manifest_version": 3,
-  "name": "CanvasPal",
-  "version": "1.0.0",
-  "description": "Prioritize Canvas assignments based on due dates, grade weights, and grade impact",
-  "permissions": [
-    "storage",
-    "tabs",
-    "alarms",
-    "notifications",
-    "commands"
-  ],
-  "host_permissions": [
-    "*://*.instructure.com/*",
-    "*://*.canvas.com/*",
-    "<all_urls>"
-  ],
-  "background": {
-    "service_worker": "background/index.js",
-    "type": "module"
-  },
-  "action": {
-    "default_icon": {
-      "16": "icons/icon16.png",
-      "48": "icons/icon48.png",
-      "128": "icons/icon128.png"
-    },
-    "default_popup": "popup/popup.html"
-  },
-  "icons": {
-    "16": "icons/icon16.png",
-    "48": "icons/icon48.png",
-    "128": "icons/icon128.png"
-  },
-  "options_page": "settings/settings.html",
-  "content_scripts": [
-    {
-      "matches": [
+    "manifest_version": 3,
+    "name": "CanvasPal",
+    "version": "1.0.0",
+    "description": "Prioritize Canvas assignments based on due dates, grade weights, and grade impact",
+    "permissions": [
+        "storage",
+        "tabs",
+        "alarms",
+        "notifications",
+        "commands"
+    ],
+    "host_permissions": [
         "*://*.instructure.com/*",
         "*://*.canvas.com/*",
         "<all_urls>"
-      ],
-      "js": [
-        "contentScript/index.js"
-      ],
-      "css": [
-        "popup/popup.css"
-      ],
-      "run_at": "document_end"
+    ],
+    "background": {
+        "service_worker": "background/index.js",
+        "type": "module"
+    },
+    "action": {
+        "default_icon": {
+            "16": "icons/icon16.png",
+            "48": "icons/icon48.png",
+            "128": "icons/icon128.png"
+        },
+        "default_popup": "popup/popup.html"
+    },
+    "icons": {
+        "16": "icons/icon16.png",
+        "48": "icons/icon48.png",
+        "128": "icons/icon128.png"
+    },
+    "options_page": "settings/settings.html",
+    "content_scripts": [
+        {
+            "matches": [
+                "*://*.instructure.com/*",
+                "*://*.canvas.com/*",
+                "<all_urls>"
+            ],
+            "js": ["contentScript/index.js"],
+            "css": ["popup/popup.css"],
+            "run_at": "document_end"
+        }
+    ],
+    "web_accessible_resources": [
+        {
+            "resources": [
+                "icons/CanvasPAL_logo.webp",
+                "icons/icon16.png",
+                "icons/icon48.png",
+                "icons/icon128.png",
+                "settings/*",
+                "popup/*"
+            ],
+            "matches": ["<all_urls>"]
+        }
+    ],
+    "commands": {
+        "refresh-assignments": {
+            "suggested_key": {
+                "default": "Ctrl+Shift+R",
+                "mac": "Command+Shift+R"
+            },
+            "description": "Refresh assignments"
+        }
     }
-  ],
-  "web_accessible_resources": [
-    {
-      "resources": [
-        "icons/*",
-        "settings/*",
-        "popup/*"
-      ],
-      "matches": [
-        "<all_urls>"
-      ]
-    }
-  ],
-  "commands": {
-    "refresh-assignments": {
-      "suggested_key": {
-        "default": "Ctrl+Shift+R",
-        "mac": "Command+Shift+R"
-      },
-      "description": "Refresh assignments"
-    }
-  }
 }

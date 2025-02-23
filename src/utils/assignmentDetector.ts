@@ -18,9 +18,17 @@ export class AssignmentDetector {
         };
 
         this.logger = new Logger('AssignmentDetector', LogLevel.INFO);
-        this.debugPanel = new DebugPanel(this.debugManager);
-        this.dateDebugger = new DateDebugger();
-        this.performanceMonitor = PerformanceMonitor.getInstance();
+        try {
+          this.debugPanel = new DebugPanel(this.debugManager);
+          this.dateDebugger = new DateDebugger();
+          this.performanceMonitor = PerformanceMonitor.getInstance();
+        } catch (error) {
+          console.error("Error initializing debug tools: ", error);
+          // Provide fallback implementations to prevent crashes
+          this.debugPanel = { logDetectionEvent: () => {} } as any;
+          this.dateDebugger = { highlightDates: async () => [] } as any;
+          this.performanceMonitor = { monitorAsync: async (name: string, fn: () => Promise<any>) => fn() } as any;
+        }
     }
 
     public async detectAssignments(): Promise<Assignment[]> {
@@ -107,21 +115,30 @@ export class AssignmentDetector {
                 credentials: 'same-origin'
             });
 
-            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            if (!response.ok) {
+                this.logger.error(`HTTP error fetching planner items! status: ${response.status}`);
+                return [];
+            }
             
             const items = await response.json();
             this.debugPanel.logDetectionEvent('Planner items retrieved:', items);
 
             return items.map((item: any) => {
-                const assignment = this.convertPlannerItem(item);
-                if (assignment) {
-                    this.debugPanel.logDetectionEvent('Processed planner item:', {
-                        title: assignment.title,
-                        type: assignment.type,
-                        dueDate: assignment.dueDate
-                    });
+                try {
+                    const assignment = this.convertPlannerItem(item);
+                    if (assignment) {
+                        this.debugPanel.logDetectionEvent('Processed planner item:', {
+                            title: assignment.title,
+                            type: assignment.type,
+                            dueDate: assignment.dueDate
+                        });
+                        return assignment;
+                    }
+                    return null;
+                } catch (error) {
+                    this.logger.error('Error processing planner item:', error);
+                    return null;
                 }
-                return assignment;
             }).filter((item: Assignment | null): item is Assignment => item !== null);
         } catch (error) {
             this.logger.error('Error fetching planner items:', error);
@@ -139,11 +156,21 @@ export class AssignmentDetector {
                 credentials: 'same-origin'
             });
 
-            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            if (!response.ok) {
+                this.logger.error(`HTTP error fetching missing submissions! status: ${response.status}`);
+                return [];
+            }
             
             const submissions = await response.json();
-            return submissions.map((submission: any) => this.convertMissingSubmission(submission))
-                .filter((item: Assignment | null) => item !== null) as Assignment[];
+            return submissions.map((submission: any) => {
+                try {
+                    return this.convertMissingSubmission(submission);
+                } catch (error) {
+                    this.logger.error('Error processing missing submission:', error);
+                    return null;
+                }
+            })
+                .filter((item: Assignment | null): item is Assignment => item !== null) as Assignment[];
         } catch (error) {
             this.logger.error('Error fetching missing submissions:', error);
             return [];
@@ -160,28 +187,39 @@ export class AssignmentDetector {
                 credentials: 'same-origin'
             });
 
-            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            if (!response.ok) {
+                this.logger.error(`HTTP error fetching dashboard cards! status: ${response.status}`);
+                return [];
+            }
             
             const cards = await response.json();
             this.debugPanel.logDetectionEvent('Dashboard cards retrieved:', cards);
 
             const assignments: Assignment[] = [];
-            for (const card of cards) {
-                if (card.assignments) {
-                    const processed = card.assignments
-                        .map((assignment: any) => {
-                            const converted = this.convertDashboardAssignment(assignment, card);
-                            if (converted) {
-                                this.debugPanel.logDetectionEvent('Processed dashboard assignment:', {
-                                    title: converted.title,
-                                    type: converted.type,
-                                    course: converted.course
-                                });
-                            }
-                            return converted;
-                        })
-                        .filter((item: Assignment | null): item is Assignment => item !== null);
-                    assignments.push(...processed);
+            if (cards) {
+                for (const card of cards) {
+                    if (card.assignments) {
+                        const processed = card.assignments
+                            .map((assignment: any) => {
+                                try {
+                                    const converted = this.convertDashboardAssignment(assignment, card);
+                                    if (converted) {
+                                        this.debugPanel.logDetectionEvent('Processed dashboard assignment:', {
+                                            title: converted.title,
+                                            type: converted.type,
+                                            course: converted.course
+                                        });
+                                        return converted;
+                                    }
+                                    return null;
+                                } catch (error) {
+                                    this.logger.error('Error processing dashboard assignment:', error);
+                                    return null;
+                                }
+                            })
+                            .filter((item: Assignment | null): item is Assignment => item !== null);
+                        assignments.push(...processed);
+                    }
                 }
             }
 

@@ -82,12 +82,20 @@ body {
 
 /* Header */
 .popup-header {
-  padding: 20px;
+  padding: 16px;
   border-bottom: 1px solid var(--border-light);
   background: rgba(255, 255, 255, 0.95);
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 16px;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
 }
 
 .header-title {
@@ -232,8 +240,12 @@ body {
 }
 
 .logo img {
-  width: 100px;
-  height: auto;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  padding: 4px;
+  background: white;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 /* Status Bar */

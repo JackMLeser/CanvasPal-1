@@ -1,15 +1,6 @@
 console.log('Background script loaded');
 
-interface Assignment {
-    title: string;
-    dueDate: string;
-    courseName: string;
-    type: string;
-    points: number;
-    maxPoints?: number;
-    weight?: number;
-    priorityScore: number;
-}
+import { Assignment, AssignmentType } from '../types/models';
 
 // Store for assignments
 let assignments: Assignment[] = [];
@@ -93,12 +84,21 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             message.data.forEach((course: any) => {
                 course.assignments.forEach((assignment: any) => {
                     dashboardAssignments.push({
+                        id: `${course.courseName}-${assignment.name}`,
                         title: assignment.name,
                         dueDate: assignment.dueDate,
-                        courseName: course.courseName,
+                        course: course.courseName,
+                        courseId: course.id?.toString() || '0',
                         type: assignment.type,
-                        points: 0, // Will be updated with grade data
-                        priorityScore: 0 // Will be calculated
+                        points: 0,
+                        maxPoints: 0,
+                        completed: false,
+                        priorityScore: 0,
+                        url: '#',
+                        details: {
+                            isCompleted: false,
+                            isLocked: false
+                        }
                     });
                 });
             });
@@ -122,7 +122,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 if (gradeInfo) {
                     assignment.points = gradeInfo.points;
                     assignment.maxPoints = gradeInfo.maxPoints;
-                    assignment.weight = gradeInfo.weight;
+                    assignment.gradeWeight = gradeInfo.weight;
                     assignment.priorityScore = calculatePriorityScore(assignment);
                 }
             });

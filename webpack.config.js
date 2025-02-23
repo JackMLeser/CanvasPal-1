@@ -49,7 +49,10 @@ module.exports = {
     plugins: [
         new CopyPlugin({
             patterns: [
-                { from: 'src/popup/popup.html', to: 'popup/popup.html' },
+                {
+                    from: 'src/popup/popup.html',
+                    to: 'popup/popup.html'
+                },
                 { from: 'src/popup/popup.css', to: 'popup/popup.css' },
                 {
                     from: 'src/settings/settings.html',
@@ -65,31 +68,12 @@ module.exports = {
                 { from: 'src/settings/settings.css', to: 'settings/settings.css' },
                 {
                     from: 'src/manifest.json',
-                    to: 'manifest.json',
-                    transform(content) {
-                        const manifest = JSON.parse(content.toString());
-                        // Update paths to match webpack output
-                        manifest.background.service_worker = 'background/index.js';
-                        manifest.content_scripts[0].js = ['contentScript/index.js'];
-                        manifest.content_scripts[0].css = ['popup/popup.css'];
-                        manifest.options_page = 'settings/settings.html';
-                        // Set the popup path
-                        manifest.action.default_popup = 'popup/popup.html';
-                        return JSON.stringify(manifest, null, 2);
-                    }
+                    to: 'manifest.json'
                 },
-                // Copy icons
+                // Copy all icons
                 {
-                    from: 'icons/icon16.png',
-                    to: 'icons/icon16.png'
-                },
-                {
-                    from: 'icons/icon48.png',
-                    to: 'icons/icon48.png'
-                },
-                {
-                    from: 'icons/icon128.png',
-                    to: 'icons/icon128.png'
+                    from: 'icons',
+                    to: 'icons'
                 }
             ]
         })
