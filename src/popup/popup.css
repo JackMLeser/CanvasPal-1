@@ -74,6 +74,7 @@ body {
   display: flex;
   flex-direction: column;
   backdrop-filter: blur(20px);
+  overflow: hidden;
 }
 
 .popup-container.show {
@@ -120,6 +121,7 @@ body {
   flex: 1;
   overflow-y: auto;
   background: var(--background-light);
+  max-height: calc(100vh - 60px - 37px); /* 100vh - header height - status bar height */
 }
 
 .assignments-list {
