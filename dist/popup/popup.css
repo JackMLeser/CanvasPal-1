@@ -545,6 +545,30 @@ body {
   color: var(--text-secondary-light);
   border-top: 1px solid var(--border-light);
   background: rgba(255, 255, 255, 0.95);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.status-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.status-button {
+  background: none;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  padding: 4px 8px;
+  font-size: 12px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.status-button:hover {
+  background: rgba(0, 0, 0, 0.05);
+  color: var(--text-primary-light);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -552,5 +576,10 @@ body {
     background: rgba(28, 28, 30, 0.95);
     border-top-color: var(--border-dark);
     color: var(--text-secondary-dark);
+  }
+
+  .status-button:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-primary-dark);
   }
 }
