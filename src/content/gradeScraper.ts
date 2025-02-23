@@ -1,4 +1,7 @@
-import { GradeData } from '../types/models';
+import { GradeData, Settings } from '../types/models';
+
+// Store settings locally
+let currentSettings: Settings | null = null;
 
 interface GradeAssignment {
     name: string;

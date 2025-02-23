@@ -1,30 +1,6 @@
-import { PriorityWeights } from '../types/models';
+import { Settings } from '../types/models';
 import { Logger } from '../utils/logger';
 import { DebugManager } from '../utils/debugManager';
-
-interface Settings {
-    priorityWeights: PriorityWeights;
-    typeWeights: {
-        quiz: number;
-        assignment: number;
-        discussion: number;
-        announcement: number;
-    };
-    displayOptions: {
-        showCourseNames: boolean;
-        showGradeImpact: boolean;
-        showPriorityScores: boolean;
-        highlightOverdue: boolean;
-    };
-    refreshInterval: number;
-    debugSettings: {
-        enabled: boolean;
-        logLevel: 'debug' | 'info' | 'warn' | 'error';
-        showDateDebug: boolean;
-        showAssignmentDebug: boolean;
-        showPriorityDebug: boolean;
-    };
-}
 
 export class SettingsManager {
     private logger: Logger;
@@ -54,7 +30,8 @@ export class SettingsManager {
             showDateDebug: false,
             showAssignmentDebug: false,
             showPriorityDebug: false
-        }
+        },
+        icalUrl: ''
     };
 
     constructor() {
@@ -255,12 +232,35 @@ export class SettingsManager {
 
     private async notifySettingsChanged(settings: Settings): Promise<void> {
         try {
+            // Notify background script
             await chrome.runtime.sendMessage({
                 type: 'SETTINGS_UPDATED',
                 settings
             });
+
+            // Notify all tabs
+            const tabs = await chrome.tabs.query({
+                url: "*://*.instructure.com/*"
+            });
+            
+            for (const tab of tabs) {
+                if (tab.id) {
+                    try {
+                        await chrome.tabs.sendMessage(tab.id, {
+                            type: 'SETTINGS_UPDATED',
+                            settings
+                        });
+                    } catch (e) {
+                        // Ignore errors for tabs that don't have our content script
+                        this.logger.debug(`Could not notify tab ${tab.id}: ${e}`);
+                    }
+                }
+            }
+
+            this.logger.info('Settings updated and propagated');
         } catch (error) {
             this.logger.error('Error notifying settings change:', error);
+            throw error; // Re-throw to handle in the save function
         }
     }
 

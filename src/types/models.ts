@@ -59,3 +59,28 @@ export interface AssignmentGroup {
     weight: number;
     courseId: string;
 }
+
+export interface Settings {
+    priorityWeights: PriorityWeights;
+    typeWeights: {
+        quiz: number;
+        assignment: number;
+        discussion: number;
+        announcement: number;
+    };
+    displayOptions: {
+        showCourseNames: boolean;
+        showGradeImpact: boolean;
+        showPriorityScores: boolean;
+        highlightOverdue: boolean;
+    };
+    refreshInterval: number;
+    debugSettings: {
+        enabled: boolean;
+        logLevel: 'debug' | 'info' | 'warn' | 'error';
+        showDateDebug: boolean;
+        showAssignmentDebug: boolean;
+        showPriorityDebug: boolean;
+    };
+    icalUrl?: string;
+}

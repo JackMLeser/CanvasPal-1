@@ -5,15 +5,7 @@ import { logger, LogLevel, Logger } from '../utils/logger';
 import { AssignmentDetector } from '../utils/assignmentDetector';
 import { PriorityCalculator } from '../utils/priorityCalculator';
 
-interface Settings {
-    icalUrl: string;
-    refreshInterval: number;
-    priorities: {
-        dueDate: number;
-        gradeWeight: number;
-        gradeImpact: number;
-    };
-}
+import { Settings } from '../types/models';
 
 interface ICalEvent extends CalendarEvent {
     gradeWeight?: number;
@@ -36,13 +28,32 @@ class BackgroundService {
 
     constructor() {
         this.settings = {
-            icalUrl: '',
+            priorityWeights: {
+                GRADE_IMPACT: 0.4,
+                COURSE_GRADE: 0.3,
+                DUE_DATE: 0.3
+            },
+            typeWeights: {
+                quiz: 1.2,
+                assignment: 1.0,
+                discussion: 0.8,
+                announcement: 0.5
+            },
+            displayOptions: {
+                showCourseNames: true,
+                showGradeImpact: true,
+                showPriorityScores: true,
+                highlightOverdue: true
+            },
             refreshInterval: 30,
-            priorities: {
-                dueDate: 0.4,
-                gradeWeight: 0.3,
-                gradeImpact: 0.3
-            }
+            debugSettings: {
+                enabled: false,
+                logLevel: 'info',
+                showDateDebug: false,
+                showAssignmentDebug: false,
+                showPriorityDebug: false
+            },
+            icalUrl: ''
         };
         this.detector = new AssignmentDetector();
         this.priorityCalculator = new PriorityCalculator();
