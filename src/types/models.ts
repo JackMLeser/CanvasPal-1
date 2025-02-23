@@ -1,67 +1,52 @@
-export interface CalendarEvent {
-    title: string;
-    dueDate: Date;
-    courseId: string;
-    assignmentId: string;
-}
-
-export interface PrioritySettings {
-    dueDateWeight: number;
-    gradeWeight: number;
-    difficultyWeight: number;
-}
-
 export interface GradeData {
     courseName: string;
-    assignments: Array<{
+    assignments: {
         name: string;
-        weight: number;
         points: number;
         pointsPossible: number;
-    }>;
+        weight?: number;
+    }[];
 }
 
-export type AssignmentType = 'assignment' | 'quiz' | 'discussion' | 'announcement';
-
-export interface AssignmentDetails {
-    submissionType?: string[];
-    isCompleted: boolean;
-    isLocked: boolean;
-    description?: string;
+export interface DashboardData {
+    courseName: string;
+    assignments: {
+        name: string;
+        dueDate: string;
+        type: string;
+    }[];
 }
 
 export interface Assignment {
     id: string;
     title: string;
     dueDate: Date;
-    course: string;
-    courseId?: string;
-    gradeWeight?: number;
-    courseGrade?: number;
-    points?: number;
-    maxPoints?: number;
+    course: string;  // Changed from courseId to course to match existing usage
+    courseId: string;
+    type: string;
     priorityScore: number;
     completed: boolean;
-    type: string;
-    url?: string;
-    details?: AssignmentDetails;
+    gradeWeight?: number;
+    pointsPossible?: number;
+    currentScore?: number;
 }
 
-export interface PriorityWeights {
-    GRADE_IMPACT: number;
-    COURSE_GRADE: number;
-    DUE_DATE: number;
-}
+export type LogLevel = 'info' | 'error' | 'debug' | 'warn';
 
-export interface AssignmentGroup {
-    id: string;
-    name: string;
-    weight: number;
-    courseId: string;
+export interface DebugConfig {
+    enabled: boolean;
+    logLevel: LogLevel;
+    showDateDebug: boolean;
+    showAssignmentDebug: boolean;
+    showPriorityDebug: boolean;
 }
 
 export interface Settings {
-    priorityWeights: PriorityWeights;
+    priorityWeights: {
+        GRADE_IMPACT: number;
+        COURSE_GRADE: number;
+        DUE_DATE: number;
+    };
     typeWeights: {
         quiz: number;
         assignment: number;
@@ -75,12 +60,21 @@ export interface Settings {
         highlightOverdue: boolean;
     };
     refreshInterval: number;
-    debugSettings: {
-        enabled: boolean;
-        logLevel: 'debug' | 'info' | 'warn' | 'error';
-        showDateDebug: boolean;
-        showAssignmentDebug: boolean;
-        showPriorityDebug: boolean;
-    };
-    icalUrl?: string;
+    debugSettings: DebugConfig;
+    icalUrl: string;
+}
+
+export interface CalendarEvent {
+    title: string;
+    description: string;
+    startDate: Date;
+    endDate: Date;
+    courseId: string;
+    type: string;
+}
+
+export interface PrioritySettings {
+    gradeImpactWeight: number;
+    dueDateWeight: number;
+    courseGradeWeight: number;
 }

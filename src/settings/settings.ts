@@ -126,6 +126,10 @@ export class SettingsManager {
         (document.getElementById('refreshInterval') as HTMLInputElement).value = 
             settings.refreshInterval.toString();
 
+        // iCal URL
+        (document.getElementById('icalUrl') as HTMLInputElement).value = 
+            settings.icalUrl;
+
         // Apply debug settings
         const debugSettings = settings.debugSettings;
         (document.getElementById('debugEnabled') as HTMLInputElement).checked = 
@@ -175,7 +179,8 @@ export class SettingsManager {
                     showDateDebug: (document.getElementById('showDateDebug') as HTMLInputElement).checked,
                     showAssignmentDebug: (document.getElementById('showAssignmentDebug') as HTMLInputElement).checked,
                     showPriorityDebug: (document.getElementById('showPriorityDebug') as HTMLInputElement).checked
-                }
+                },
+                icalUrl: (document.getElementById('icalUrl') as HTMLInputElement).value
             };
 
             await chrome.storage.sync.set({ settings });

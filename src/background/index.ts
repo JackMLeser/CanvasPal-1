@@ -1,4 +1,4 @@
-import type { CalendarEvent, PrioritySettings, GradeData, Assignment } from '../types/models';
+import type { CalendarEvent, PrioritySettings, GradeData, DashboardData, Assignment } from '../types/models';
 import { parseICalFeed } from '../utils/calendar';
 import { calculatePriority } from '../utils/priorities';
 import { logger, LogLevel, Logger } from '../utils/logger';
@@ -17,6 +17,7 @@ class BackgroundService {
     private static readonly SYNC_INTERVAL = 30 * 60 * 1000;
     private static readonly RETRY_INTERVAL = 5 * 60 * 1000;
     private gradeData: { [courseId: string]: GradeData } = {};
+    private dashboardData: { [courseId: string]: DashboardData } = {};
     private lastSyncTime = 0;
     private syncIntervalId?: number;
     private retryTimeoutId?: number;
@@ -59,48 +60,31 @@ class BackgroundService {
         this.priorityCalculator = new PriorityCalculator();
         this.logger = new Logger('BackgroundService');
         this.initialize();
-        this.initializeMessageHandlers();
         this.setupAutoRefresh();
     }
 
     public async initialize(): Promise<void> {
-        // Load settings from sync storage
-        const { settings } = await chrome.storage.sync.get('settings');
-        if (settings) {
-            this.settings = settings;
-        } else {
-            // Initialize default settings if none exist
-            await chrome.storage.sync.set({ settings: this.settings });
+        try {
+            // Load settings from sync storage
+            const { settings } = await chrome.storage.sync.get('settings');
+            if (settings) {
+                this.settings = settings;
+            } else {
+                // Initialize default settings if none exist
+                await chrome.storage.sync.set({ settings: this.settings });
+            }
+
+            // Set up message listeners
+            chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+                this.handleMessage(message, sender, sendResponse);
+                return true; // Keep the message channel open for async response
+            });
+
+            this.startPeriodicSync();
+            this.logger.info('Background service initialized');
+        } catch (error) {
+            this.logger.error('Error initializing background service:', error);
         }
-
-        // Set up message listeners
-        chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-            switch (message.type) {
-                case 'SETTINGS_UPDATED':
-                    this.settings = message.settings;
-                    void this.performSync();
-                    break;
-                case 'GET_ASSIGNMENTS':
-                    void this.fetchAndProcessAssignments()
-                        .then(sendResponse)
-                        .catch(error => sendResponse({ error: error.message }));
-                    return true;
-            }
-        });
-
-        this.startPeriodicSync();
-    }
-
-    private initializeMessageHandlers(): void {
-        chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-            if (message.type === 'GRADE_DATA') {
-                this.handleGradeData(message.data);
-                sendResponse({ success: true });
-                return true;
-            }
-            this.handleMessage(message, sender, sendResponse);
-            return true; // Keep the message channel open for async response
-        });
     }
 
     private async handleMessage(
@@ -110,6 +94,11 @@ class BackgroundService {
     ): Promise<void> {
         try {
             switch (message.type) {
+                case 'SETTINGS_UPDATED':
+                    await this.handleSettingsUpdate(message.settings);
+                    sendResponse({ success: true });
+                    break;
+
                 case 'GET_ASSIGNMENTS':
                     const assignments = await this.getAssignments();
                     sendResponse({ assignments });
@@ -128,6 +117,16 @@ class BackgroundService {
                     sendResponse({ success: true });
                     break;
 
+                case 'GRADE_DATA':
+                    this.handleGradeData(message.data);
+                    sendResponse({ success: true });
+                    break;
+
+                case 'DASHBOARD_DATA':
+                    this.handleDashboardData(message.data);
+                    sendResponse({ success: true });
+                    break;
+
                 default:
                     this.logger.warn('Unknown message type:', message);
                     sendResponse({ error: 'Unknown message type' });
@@ -136,6 +135,40 @@ class BackgroundService {
             this.logger.error('Error handling message:', error);
             sendResponse({ error: 'Internal error' });
         }
+    }
+
+    private async handleSettingsUpdate(newSettings: Settings): Promise<void> {
+        this.settings = newSettings;
+        
+        // Save to storage
+        await chrome.storage.sync.set({ settings: newSettings });
+
+        // Notify all Canvas tabs
+        const tabs = await chrome.tabs.query({
+            url: [
+                "*://*.instructure.com/*",
+                "*://*.canvas.com/*"
+            ]
+        });
+
+        // Send update to each tab
+        const updatePromises = tabs.map(tab => {
+            if (tab.id) {
+                return chrome.tabs.sendMessage(tab.id, {
+                    type: 'SETTINGS_UPDATED',
+                    settings: newSettings
+                }).catch(error => {
+                    // Log but don't fail if a tab doesn't have our content script
+                    this.logger.debug(`Could not update tab ${tab.id}:`, error);
+                });
+            }
+        });
+
+        await Promise.all(updatePromises);
+        this.logger.info('Settings updated and propagated to all tabs');
+
+        // Trigger a sync with new settings
+        await this.performSync();
     }
 
     private async getAssignments(): Promise<Assignment[]> {
@@ -161,7 +194,8 @@ class BackgroundService {
             // Update stored assignments
             this.assignments = newAssignments;
 
-            // Notify any open popups
+            // Save to storage and notify popups
+            await this.saveAssignments();
             this.notifyPopups();
 
             this.logger.info('Assignments refreshed:', {
@@ -226,12 +260,6 @@ class BackgroundService {
         }, {} as Record<string, number>);
     }
 
-    private async fetchCalendarData(url: string): Promise<CalendarEvent[]> {
-        const response = await fetch(url);
-        const icalData = await response.text();
-        return parseICalFeed(icalData);
-    }
-
     private handleGradeData(data: GradeData): void {
         try {
             this.logger.info('Received grade data:', data);
@@ -243,6 +271,81 @@ class BackgroundService {
         } catch (error) {
             this.logger.error('Error handling grade data:', error);
         }
+    }
+
+    private handleDashboardData(data: DashboardData[]): void {
+        try {
+            this.logger.info('Received dashboard data:', data);
+            data.forEach(courseData => {
+                this.dashboardData[courseData.courseName] = courseData;
+                chrome.storage.local.set({
+                    [`dashboard_${courseData.courseName}`]: courseData,
+                    lastUpdated: new Date().toISOString()
+                });
+            });
+            
+            // Update assignments with dashboard data
+            this.mergeDashboardData();
+        } catch (error) {
+            this.logger.error('Error handling dashboard data:', error);
+        }
+    }
+
+    private mergeDashboardData(): void {
+        // Update existing assignments with dashboard information
+        this.assignments = this.assignments.map(assignment => {
+            const dashboardAssignment = this.findDashboardAssignment(assignment);
+            if (dashboardAssignment) {
+                return {
+                    ...assignment,
+                    dueDate: new Date(dashboardAssignment.dueDate),
+                    type: dashboardAssignment.type || assignment.type
+                };
+            }
+            return assignment;
+        });
+
+        // Add new assignments from dashboard that don't exist
+        Object.values(this.dashboardData).forEach(courseData => {
+            courseData.assignments.forEach(dashboardAssignment => {
+                const exists = this.assignments.some(a => 
+                    a.title.toLowerCase() === dashboardAssignment.name.toLowerCase() &&
+                    a.course === courseData.courseName
+                );
+
+                if (!exists) {
+                    const newAssignment: Assignment = {
+                        id: `${courseData.courseName}_${dashboardAssignment.name}`,
+                        title: dashboardAssignment.name,
+                        dueDate: new Date(dashboardAssignment.dueDate),
+                        course: courseData.courseName,
+                        courseId: courseData.courseName,
+                        type: dashboardAssignment.type,
+                        priorityScore: 0,
+                        completed: false
+                    };
+                    this.assignments.push(newAssignment);
+                }
+            });
+        });
+
+        // Recalculate priorities and sort
+        this.assignments.forEach(assignment => {
+            assignment.priorityScore = this.priorityCalculator.calculatePriority(assignment);
+        });
+        this.assignments.sort((a, b) => b.priorityScore - a.priorityScore);
+
+        // Save updated assignments
+        void this.saveAssignments();
+    }
+
+    private findDashboardAssignment(assignment: Assignment): DashboardData['assignments'][0] | undefined {
+        const courseData = this.dashboardData[assignment.course];
+        if (!courseData) return undefined;
+
+        return courseData.assignments.find(a => 
+            a.name.toLowerCase() === assignment.title.toLowerCase()
+        );
     }
 
     private startPeriodicSync(): void {
@@ -270,7 +373,7 @@ class BackgroundService {
                 return;
             }
 
-            await this.fetchAndProcessAssignments();
+            await this.refreshAssignments();
             this.lastSyncTime = now;
             await this.logger.info('Sync completed successfully');
             chrome.runtime.sendMessage({ type: "syncComplete", timestamp: now });
@@ -286,61 +389,6 @@ class BackgroundService {
                 error: error instanceof Error ? error.message : "Unknown error"
             });
         }
-    }
-
-    private async fetchAndProcessAssignments(): Promise<ICalEvent[]> {
-        if (!this.settings.icalUrl) {
-            throw new Error("iCalendar URL not set");
-        }
-
-        try {
-            const response = await fetch(this.settings.icalUrl);
-            if (!response.ok) {
-                throw new Error(`Failed to fetch iCal feed: ${response.statusText}`);
-            }
-            const icalData = await response.text();
-            const assignments = this.parseICalData(icalData);
-            return this.enrichAssignmentsWithGrades(assignments);
-        } catch (error) {
-            console.error("Failed to fetch or parse iCal data:", error);
-            throw new Error("Failed to fetch assignments");
-        }
-    }
-
-    private enrichAssignmentsWithGrades(assignments: ICalEvent[]): ICalEvent[] {
-        return assignments.map(assignment => ({
-            ...assignment,
-            ...this.findGradeInfo(assignment)
-        }));
-    }
-
-    private findGradeInfo(assignment: CalendarEvent): Partial<ICalEvent> {
-        const courseData = this.gradeData[assignment.courseId];
-        if (!courseData) return {};
-
-        const gradeInfo = courseData.assignments.find((a: { name: string }) => 
-            a.name.toLowerCase() === assignment.title.toLowerCase()
-        );
-
-        if (!gradeInfo) return {};
-
-        return {
-            gradeWeight: gradeInfo.weight,
-            pointsPossible: gradeInfo.pointsPossible,
-            currentScore: gradeInfo.points
-        };
-    }
-
-    private parseICalData(icalData: string): ICalEvent[] {
-        return parseICalFeed(icalData).map(event => ({
-            ...event,
-            courseId: this.extractCourseId(event.courseId)
-        }));
-    }
-
-    private extractCourseId(description: string): string {
-        const courseMatch = description.match(/Course: (.*?)(?:\n|$)/);
-        return courseMatch ? courseMatch[1] : "Unknown Course";
     }
 }
 

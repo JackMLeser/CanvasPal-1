@@ -5,7 +5,8 @@ module.exports = {
     entry: {
         'background/index': './src/background/index.ts',
         'popup/popup': './src/popup/popup.ts',
-        'content/gradeScraper': './src/content/gradeScraper.ts'
+        'contentScript/index': './src/contentScript/index.ts',
+        'settings/settings': './src/settings/settings.ts'
     },
     output: {
         path: path.resolve(__dirname, 'dist'),

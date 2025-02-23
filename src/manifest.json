@@ -33,7 +33,7 @@
 	"content_scripts": [
 		{
 			"matches": ["*://*.instructure.com/*"],
-			"js": ["content/gradeScraper.js"],
+			"js": ["contentScript/index.js"],
 			"run_at": "document_idle"
 		}
 	],
