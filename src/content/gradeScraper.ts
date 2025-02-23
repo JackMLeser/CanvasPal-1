@@ -16,7 +16,18 @@ function scrapeGrades(): GradeData | null {
     try {
         // Check if we're on a grades page
         const pageTitle = document.querySelector('h1.ic-Action-header__Heading')?.textContent;
-        if (!pageTitle?.includes('Grades')) {
+        const pageUrl = window.location.pathname;
+        const isGradesPage = pageTitle?.includes('Grade') ||
+                            pageUrl.includes('/grades') ||
+                            document.getElementById('grades_summary') !== null;
+
+        console.log('CanvasPal: Page detection:', {
+            pageTitle,
+            pageUrl,
+            isGradesPage
+        });
+
+        if (!isGradesPage) {
             console.warn('CanvasPal: Not on a grades page');
             return null;
         }
@@ -232,10 +243,28 @@ initializeSettings();
 
 // Initialize grade scraping when page loads
 const initializeScraping = () => {
+    console.log('CanvasPal: Initializing grade scraping');
+    
+    // Check if we're on the main Canvas page
+    if (window.location.pathname === '/') {
+        console.log('CanvasPal: On main Canvas page, not initializing scraper');
+        return;
+    }
+
+    // Initial check for grades table
+    const gradesTable = document.getElementById('grades_summary');
+    if (gradesTable) {
+        console.log('CanvasPal: Found grades table immediately');
+        scrapeGrades();
+        return;
+    }
+
     // Wait for the grades table to be visible
+    console.log('CanvasPal: Setting up observer for grades table');
     const observer = new MutationObserver((mutations, obs) => {
         const gradesTable = document.getElementById('grades_summary');
         if (gradesTable) {
+            console.log('CanvasPal: Grades table appeared in DOM');
             obs.disconnect();
             scrapeGrades();
         }
@@ -245,10 +274,20 @@ const initializeScraping = () => {
         childList: true,
         subtree: true
     });
+
+    // Set a timeout to stop observing after 10 seconds
+    setTimeout(() => {
+        observer.disconnect();
+        console.log('CanvasPal: Stopped observing after timeout');
+    }, 10000);
 };
 
+// Start initialization based on document state
+console.log('CanvasPal: Starting initialization');
 if (document.readyState === 'loading') {
+    console.log('CanvasPal: Document loading, waiting for DOMContentLoaded');
     document.addEventListener('DOMContentLoaded', initializeScraping);
 } else {
+    console.log('CanvasPal: Document already loaded, initializing now');
     initializeScraping();
 }

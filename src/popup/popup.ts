@@ -36,7 +36,15 @@ class PopupManager {
                 }
 
                 if (!response || !response.success) {
-                    this.showNoAssignments('No grades found');
+                    // Check if we're on the main Canvas page
+                    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+                        const url = tabs[0]?.url;
+                        if (url && url.endsWith('.instructure.com/')) {
+                            this.showNoAssignments('Please navigate to a course grades page');
+                        } else {
+                            this.showNoAssignments('No grades found');
+                        }
+                    });
                     return;
                 }
 
