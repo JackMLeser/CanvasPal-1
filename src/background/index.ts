@@ -194,7 +194,26 @@ class BackgroundService {
     }
 
     public async refreshAssignments(): Promise<void> {
+        if (!this.contentScriptReady) {
+            this.logger.warn('Content script not ready, waiting for initialization');
+            return;
+        }
+
         try {
+            // Find active Canvas tab
+            const tabs = await chrome.tabs.query({
+                active: true,
+                url: ["*://*.instructure.com/*", "*://*.canvas.com/*"]
+            });
+
+            if (!tabs.length) {
+                this.logger.warn('No active Canvas tab found');
+                this.assignments = [];
+                await this.saveAssignments();
+                this.notifyPopups();
+                return;
+            }
+
             // Get assignments from detector
             const newAssignments = await this.detector.detectAssignments();
 
@@ -219,6 +238,9 @@ class BackgroundService {
             });
         } catch (error) {
             this.logger.error('Error refreshing assignments:', error);
+            this.assignments = [];
+            await this.saveAssignments();
+            this.notifyPopups();
             throw error;
         }
     }
@@ -248,13 +270,40 @@ class BackgroundService {
     }
 
     private notifyPopups(): void {
-        chrome.runtime.sendMessage({ 
+        const message = {
             type: 'ASSIGNMENTS_UPDATED',
-            assignments: this.assignments
-        }).catch(error => {
+            assignments: this.assignments,
+            status: this.getAssignmentStatus()
+        };
+
+        // Send to popups
+        chrome.runtime.sendMessage(message).catch(error => {
             // Ignore errors - popups might not be open
             this.logger.debug('No popups to notify:', error);
         });
+
+        // Send to content scripts
+        chrome.tabs.query({
+            url: ["*://*.instructure.com/*", "*://*.canvas.com/*"]
+        }).then(tabs => {
+            tabs.forEach(tab => {
+                if (tab.id) {
+                    chrome.tabs.sendMessage(tab.id, message).catch(error => {
+                        this.logger.debug(`Could not notify tab ${tab.id}:`, error);
+                    });
+                }
+            });
+        });
+    }
+
+    private getAssignmentStatus(): string {
+        if (!this.contentScriptReady) {
+            return 'Loading assignments...';
+        }
+        if (this.assignments.length === 0) {
+            return 'No assignments found';
+        }
+        return `Found ${this.assignments.length} assignments`;
     }
 
     private setupAutoRefresh(): void {

@@ -27,19 +27,36 @@ export class BackgroundAssignmentDetector {
         }
     }
 
+    private async fetchFromContentScript(url: string, options: RequestInit = {}): Promise<any> {
+        const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+        if (!tabs[0]?.id) {
+            throw new Error('No active tab found');
+        }
+
+        const response = await chrome.tabs.sendMessage(tabs[0].id, {
+            type: 'FETCH_REQUEST',
+            url,
+            options: {
+                ...options,
+                credentials: 'same-origin',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    ...options.headers
+                }
+            }
+        });
+
+        if (!response.success) {
+            throw new Error(response.error || 'Failed to fetch data');
+        }
+
+        return response.data;
+    }
+
     private async fetchPlannerItems(): Promise<Assignment[]> {
         try {
-            const response = await fetch('/api/v1/planner/items?per_page=50', {
-                headers: {
-                    'Accept': 'application/json+canvas-string-ids, application/json',
-                    'X-Requested-With': 'XMLHttpRequest'
-                },
-                credentials: 'same-origin'
-            });
-
-            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-            
-            const items = await response.json();
+            const items = await this.fetchFromContentScript('/api/v1/planner/items?per_page=50');
             return items.map((item: any) => this.convertPlannerItem(item))
                 .filter((item: Assignment | null): item is Assignment => item !== null);
         } catch (error) {
@@ -50,17 +67,7 @@ export class BackgroundAssignmentDetector {
 
     private async fetchMissingSubmissions(): Promise<Assignment[]> {
         try {
-            const response = await fetch('/api/v1/users/self/missing_submissions?include[]=planner_overrides', {
-                headers: {
-                    'Accept': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest'
-                },
-                credentials: 'same-origin'
-            });
-
-            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-            
-            const submissions = await response.json();
+            const submissions = await this.fetchFromContentScript('/api/v1/users/self/missing_submissions?include[]=planner_overrides');
             return submissions.map((submission: any) => this.convertMissingSubmission(submission))
                 .filter((item: Assignment | null): item is Assignment => item !== null);
         } catch (error) {
@@ -71,17 +78,7 @@ export class BackgroundAssignmentDetector {
 
     private async parseDashboardCards(): Promise<Assignment[]> {
         try {
-            const response = await fetch('/api/v1/dashboard/dashboard_cards', {
-                headers: {
-                    'Accept': 'application/json+canvas-string-ids, application/json',
-                    'X-Requested-With': 'XMLHttpRequest'
-                },
-                credentials: 'same-origin'
-            });
-
-            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-            
-            const cards = await response.json();
+            const cards = await this.fetchFromContentScript('/api/v1/dashboard/dashboard_cards');
             const assignments: Assignment[] = [];
 
             for (const card of cards) {

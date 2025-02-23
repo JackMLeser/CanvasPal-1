@@ -21,6 +21,7 @@ declare class BackgroundService {
     updateAssignmentCompletion(assignmentId: string, completed: boolean): Promise<void>;
     private saveAssignments;
     private notifyPopups;
+    private getAssignmentStatus;
     private setupAutoRefresh;
     private getAssignmentTypeCounts;
     private handleGradeData;

@@ -1,35 +1,5 @@
 import { Assignment } from '../types/models';
 
-// Listen for messages from the background script
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    try {
-        switch (message.type) {
-            case 'SETTINGS_UPDATED':
-                // Handle settings update
-                console.log('Settings updated:', message.settings);
-                sendResponse({ success: true });
-                break;
-case 'REFRESH_ASSIGNMENTS':
-    // Re-run scrapers
-    if (document.querySelector('.ic-Dashboard-header, .context_module')) {
-        new DashboardScraper();
-    }
-    new GradeDataScraper();
-    sendResponse({ success: true });
-    break;
-                break;
-
-            default:
-                console.warn('Unknown message type:', message.type);
-                sendResponse({ error: 'Unknown message type' });
-        }
-    } catch (error) {
-        console.error('Error handling message:', error);
-        sendResponse({ error: 'Internal error' });
-    }
-    return true; // Keep the message channel open for async response
-});
-
 export interface GradeData {
     courseName: string;
     assignments: {
@@ -207,36 +177,6 @@ export class GradeDataScraper {
     }
 }
 
-// Initialize message handling
-const setupMessageHandling = () => {
-    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-        try {
-            console.log('Content script received message:', message);
-            
-            switch (message.type) {
-                case 'SETTINGS_UPDATED':
-                    console.log('Settings updated:', message.settings);
-                    sendResponse({ success: true });
-                    break;
-
-                case 'REFRESH_ASSIGNMENTS':
-                    console.log('Refreshing assignments');
-                    initializeScrapers();
-                    sendResponse({ success: true });
-                    break;
-
-                default:
-                    console.warn('Unknown message type:', message.type);
-                    sendResponse({ error: 'Unknown message type' });
-            }
-        } catch (error) {
-            console.error('Error handling message:', error);
-            sendResponse({ error: 'Internal error' });
-        }
-        return true; // Keep the message channel open for async response
-    });
-};
-
 // Initialize scrapers
 const initializeScrapers = () => {
     // Check if we're on a Canvas page
@@ -251,10 +191,52 @@ const initializeScrapers = () => {
     new GradeDataScraper();
 };
 
-// Main initialization
+// Message handling
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    try {
+        console.log('Content script received message:', message);
+        
+        switch (message.type) {
+            case 'SETTINGS_UPDATED':
+                console.log('Settings updated:', message.settings);
+                sendResponse({ success: true });
+                break;
+
+            case 'REFRESH_ASSIGNMENTS':
+                console.log('Refreshing assignments');
+                initializeScrapers();
+                sendResponse({ success: true });
+                break;
+
+            case 'FETCH_REQUEST':
+                // Handle fetch requests from background script
+                fetch(message.url, message.options)
+                    .then(async response => {
+                        if (!response.ok) {
+                            throw new Error(`HTTP error! status: ${response.status}`);
+                        }
+                        const data = await response.json();
+                        sendResponse({ success: true, data });
+                    })
+                    .catch(error => {
+                        console.error('Fetch error:', error);
+                        sendResponse({ success: false, error: error.message });
+                    });
+                return true; // Keep channel open for async response
+
+            default:
+                console.warn('Unknown message type:', message.type);
+                sendResponse({ error: 'Unknown message type' });
+        }
+    } catch (error) {
+        console.error('Error handling message:', error);
+        sendResponse({ error: 'Internal error' });
+    }
+    return true; // Keep the message channel open for async response
+});
+
+// Initialize on load
 const initialize = () => {
-    setupMessageHandling();
-    
     // Wait for DOM to be ready before initializing scrapers
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', () => {
@@ -271,9 +253,5 @@ const initialize = () => {
     }
 };
 
-// Run initialization when DOM is ready
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initialize);
-} else {
-    initialize();
-}
+// Run initialization
+initialize();

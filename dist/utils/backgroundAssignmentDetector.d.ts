@@ -3,6 +3,7 @@ export declare class BackgroundAssignmentDetector {
     private logger;
     constructor();
     detectAssignments(): Promise<Assignment[]>;
+    private fetchFromContentScript;
     private fetchPlannerItems;
     private fetchMissingSubmissions;
     private parseDashboardCards;
