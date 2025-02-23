@@ -48,14 +48,16 @@
     "web_accessible_resources": [
         {
             "resources": [
-                "icons/CanvasPAL_logo.webp",
-                "icons/icon16.png",
-                "icons/icon48.png",
                 "icons/icon128.png",
+                "icons/icon48.png",
+                "icons/icon16.png",
                 "settings/*",
                 "popup/*"
             ],
-            "matches": ["<all_urls>"]
+            "matches": [
+                "<all_urls>",
+                "chrome-extension://*/*"
+            ]
         }
     ],
     "commands": {

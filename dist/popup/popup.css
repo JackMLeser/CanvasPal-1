@@ -234,22 +234,33 @@ body {
 }
 
 /* Logo */
-.logo {
-  text-align: center;
-  margin: 10px 0;
+.logo-button {
+  background: var(--primary-color);
+  color: white;
+  border: none;
+  padding: 4px 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  font-weight: bold;
+  font-size: 14px;
+  transition: all 0.2s ease;
 }
 
-.logo svg {
-  width: 48px;
-  height: 48px;
-  border-radius: 8px;
-  padding: 4px;
-  background: white;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+.logo-button:hover {
+  background: var(--primary-hover);
+  transform: scale(1.1);
 }
 
-.logo svg text {
-  font-family: 'Lato', Arial, sans-serif;
+@media (prefers-color-scheme: dark) {
+  .logo-button {
+    background: var(--primary-hover);
+  }
+  .logo-button:hover {
+    background: var(--primary-color);
+  }
 }
 
 /* Status Bar */

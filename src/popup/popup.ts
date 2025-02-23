@@ -24,6 +24,31 @@ class PopupManager {
         this.popupContainer = document.getElementById('popupContainer');
         this.assignmentsButton = document.getElementById('assignmentsButton');
         this.settingsContent = document.getElementById('settingsContent');
+
+        // Debug icon loading in popup
+        console.log('Debug: Popup initialization');
+        console.log('Debug: Chrome runtime state:', {
+            available: !!chrome?.runtime,
+            id: chrome?.runtime?.id,
+            manifest: chrome?.runtime?.getManifest?.()
+        });
+
+        // Set the icon URL
+        try {
+            const iconUrl = chrome.runtime.getURL('icons/icon128.png');
+            console.log('Debug: Generated icon URL in popup:', iconUrl);
+            
+            const logoImg = document.getElementById('canvaspal-logo') as HTMLImageElement;
+            if (logoImg) {
+                console.log('Debug: Setting icon src to:', iconUrl);
+                logoImg.src = iconUrl;
+            } else {
+                console.error('Debug: Logo image element not found');
+            }
+        } catch (error) {
+            console.error('Debug: Error setting icon URL in popup:', error);
+        }
+
         this.initializeEventListeners();
         this.loadSettings();
         this.loadAssignments();
