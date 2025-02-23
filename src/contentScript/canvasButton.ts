@@ -371,9 +371,9 @@ function updateAssignmentsList(assignments: any[], assignmentList: HTMLElement, 
         assignmentList.innerHTML = assignments.map(assignment => `
             <div class="assignment-item ${getPriorityClass(assignment.priorityScore)}">
                 <div style="font-weight: bold;">${assignment.title}</div>
-                <div>Due: ${assignment.dueDate}</div>
-                <div>Course: ${assignment.courseName}</div>
-                <div>Points: ${assignment.points}</div>
+                <div>Due: ${new Date(assignment.dueDate).toLocaleString()}</div>
+                <div>Course: ${assignment.course}</div>
+                <div>Points: ${assignment.points !== undefined ? assignment.points : (assignment.maxPoints || 0)}</div>
             </div>
         `).join('');
     } catch (error) {

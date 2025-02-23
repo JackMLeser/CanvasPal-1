@@ -1,6 +1,7 @@
 import { Assignment, PriorityWeights } from '../types/models';
 export declare class PriorityCalculator {
-    private readonly PRIORITY_WEIGHTS;
+    private PRIORITY_WEIGHTS;
+    private readonly TYPE_WEIGHTS;
     private logger;
     private debugPanel;
     private performanceMonitor;
@@ -12,5 +13,8 @@ export declare class PriorityCalculator {
     private calculateGradeImpact;
     private calculateCourseGradeImpact;
     private getTypeWeight;
+    private getDueStatus;
+    private getPointsImpact;
+    private getTypeImportance;
     setPriorityWeights(weights: Partial<PriorityWeights>): void;
 }

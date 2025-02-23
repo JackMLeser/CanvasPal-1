@@ -9,4 +9,8 @@ export declare class AssignmentRenderer {
     private renderAdditionalDetails;
     private escapeHtml;
     private capitalizeFirstLetter;
+    private renderPriorityDetails;
+    private formatDueStatus;
+    private formatPointsImpact;
+    private formatTypeImportance;
 }

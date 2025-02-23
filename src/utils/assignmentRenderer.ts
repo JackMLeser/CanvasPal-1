@@ -28,9 +28,10 @@ export class AssignmentRenderer {
                 ${this.renderPointsDisplay(assignment)}
                 ${assignment.details ? this.renderAdditionalDetails(assignment.details) : ''}
             </div>
+            ${this.renderPriorityDetails(assignment)}
             <div class="completion">
-                <input type="checkbox" 
-                    ${assignment.completed ? 'checked' : ''} 
+                <input type="checkbox"
+                    ${assignment.completed ? 'checked' : ''}
                     title="Mark as complete"
                     onclick="handleCompletionToggle('${assignment.id}', this.checked)">
             </div>
@@ -139,5 +140,63 @@ export class AssignmentRenderer {
 
     private capitalizeFirstLetter(str: string): string {
         return str.charAt(0).toUpperCase() + str.slice(1);
+    }
+
+    private renderPriorityDetails(assignment: Assignment): string {
+        if (!assignment.priorityDetails) return '';
+
+        const { dueStatus, pointsImpact, typeImportance } = assignment.priorityDetails;
+
+        return `
+            <div class="priority-details">
+                <div class="priority-item">
+                    <div class="priority-label">Due Status</div>
+                    <div class="priority-value ${dueStatus}">
+                        ${this.formatDueStatus(dueStatus)}
+                    </div>
+                </div>
+                <div class="priority-item">
+                    <div class="priority-label">Points Impact</div>
+                    <div class="priority-value ${pointsImpact}">
+                        ${this.formatPointsImpact(pointsImpact)}
+                    </div>
+                </div>
+                <div class="priority-item">
+                    <div class="priority-label">Type</div>
+                    <div class="priority-value ${typeImportance}">
+                        ${this.formatTypeImportance(typeImportance)}
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    private formatDueStatus(status: string): string {
+        switch (status) {
+            case 'overdue': return '⚠️ Overdue';
+            case 'due-soon': return '⏰ Due Soon';
+            case 'upcoming': return '📅 Upcoming';
+            case 'far-future': return '🕒 Future';
+            default: return status;
+        }
+    }
+
+    private formatPointsImpact(impact: string): string {
+        switch (impact) {
+            case 'high': return '⭐⭐⭐ High';
+            case 'medium': return '⭐⭐ Medium';
+            case 'low': return '⭐ Low';
+            default: return impact;
+        }
+    }
+
+    private formatTypeImportance(importance: string): string {
+        switch (importance) {
+            case 'critical': return '🔥 Critical';
+            case 'high': return '📊 High';
+            case 'normal': return '📝 Normal';
+            case 'low': return '📌 Low';
+            default: return importance;
+        }
     }
 }

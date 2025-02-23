@@ -26,6 +26,18 @@ export interface AssignmentDetails {
 
 export type AssignmentType = 'quiz' | 'assignment' | 'discussion' | 'announcement';
 
+export interface PriorityDetails {
+    dueStatus: 'overdue' | 'due-soon' | 'upcoming' | 'far-future';
+    daysUntilDue: number;
+    pointsImpact: 'high' | 'medium' | 'low';
+    typeImportance: 'critical' | 'high' | 'normal' | 'low';
+    components: {
+        dueDateScore: number;
+        gradeImpactScore: number;
+        typeScore: number;
+    };
+}
+
 export interface Assignment {
     id: string;
     title: string;
@@ -41,6 +53,7 @@ export interface Assignment {
     details: AssignmentDetails;
     courseGrade?: number;
     gradeWeight?: number;
+    priorityDetails?: PriorityDetails;
 }
 
 export interface EnrichedEvent extends CalendarEvent {

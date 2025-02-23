@@ -234,21 +234,79 @@ class PopupManager {
             `${assignment.points}/${assignment.maxPoints} points` :
             `${assignment.points} points`;
 
+        // Priority details display
+        const priorityDetails = assignment.priorityDetails ? `
+            <div class="priority-details">
+                <div class="priority-item">
+                    <div class="priority-label">Due Status</div>
+                    <div class="priority-value ${assignment.priorityDetails.dueStatus}">
+                        ${this.formatDueStatus(assignment.priorityDetails.dueStatus)}
+                    </div>
+                </div>
+                <div class="priority-item">
+                    <div class="priority-label">Points</div>
+                    <div class="priority-value ${assignment.priorityDetails.pointsImpact}">
+                        ${points} (${this.formatPointsImpact(assignment.priorityDetails.pointsImpact)} Impact)
+                    </div>
+                </div>
+                <div class="priority-item">
+                    <div class="priority-label">Type</div>
+                    <div class="priority-value ${assignment.priorityDetails.typeImportance}">
+                        ${this.formatTypeImportance(assignment.priorityDetails.typeImportance)}
+                    </div>
+                </div>
+            </div>
+        ` : '';
+
         return `
             <div class="assignment-card ${priorityClass}">
-                <div class="assignment-title">
-                    <a href="${assignment.url || '#'}" target="_blank">
-                        ${assignment.title}
-                    </a>
+                <div class="assignment-header">
+                    <div class="assignment-title">
+                        <a href="${assignment.url || '#'}" target="_blank">
+                            ${assignment.title}
+                        </a>
+                    </div>
+                    <div class="priority-score ${priorityClass}">
+                        ${Math.round(assignment.priorityScore * 100)}%
+                    </div>
                 </div>
                 <div class="assignment-course">${assignment.course}</div>
                 <div class="due-info">
                     <span class="due-date">Due: ${dueDate}</span>
                     <span class="time-remaining ${timeStatus.class}">${timeStatus.text}</span>
                 </div>
-                <div class="points">${points}</div>
+                ${priorityDetails}
             </div>
         `;
+    }
+
+    private formatDueStatus(status: string): string {
+        switch (status) {
+            case 'overdue': return '⚠️ Overdue';
+            case 'due-soon': return '⏰ Due Soon';
+            case 'upcoming': return '📅 Upcoming';
+            case 'far-future': return '🕒 Future';
+            default: return status;
+        }
+    }
+
+    private formatPointsImpact(impact: string): string {
+        switch (impact) {
+            case 'high': return '⭐⭐⭐ High';
+            case 'medium': return '⭐⭐ Medium';
+            case 'low': return '⭐ Low';
+            default: return impact;
+        }
+    }
+
+    private formatTypeImportance(importance: string): string {
+        switch (importance) {
+            case 'critical': return '🔥 Critical';
+            case 'high': return '📊 High';
+            case 'normal': return '📝 Normal';
+            case 'low': return '📌 Low';
+            default: return importance;
+        }
     }
 
     private getPriorityClass(priorityScore: number): string {

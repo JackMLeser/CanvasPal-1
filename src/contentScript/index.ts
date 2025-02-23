@@ -27,9 +27,26 @@ const initialize = async () => {
                 assignments: [{
                     name: assignment.title,
                     dueDate: assignment.dueDate,
-                    type: assignment.type
+                    type: assignment.type,
+                    points: assignment.points,
+                    maxPoints: assignment.maxPoints,
+                    completed: assignment.completed,
+                    url: assignment.url,
+                    submissionType: assignment.details?.submissionType,
+                    description: assignment.details?.description,
+                    locked: assignment.details?.isLocked,
+                    priorityScore: assignment.priorityScore,
+                    priorityDetails: assignment.priorityDetails
                 }]
-            }))
+            })),
+            gradeData: {
+                assignments: assignments.map(assignment => ({
+                    name: assignment.title,
+                    points: assignment.points,
+                    pointsPossible: assignment.maxPoints,
+                    weight: assignment.gradeWeight
+                }))
+            }
         });
 
     } catch (error) {

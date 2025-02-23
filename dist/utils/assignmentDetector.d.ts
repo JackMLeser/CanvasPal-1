@@ -5,6 +5,7 @@ export declare class AssignmentDetector {
     private dateDebugger;
     private performanceMonitor;
     private debugManager;
+    private priorityCalculator;
     constructor();
     detectAssignments(): Promise<Assignment[]>;
     private validateAssignmentDates;
