@@ -377,7 +377,7 @@ const createElements = async (): Promise<Elements | null> => {
                     <div class="popup-title">CanvasPAL</div>
                     <div class="task-count" id="taskCount">0 Tasks</div>
                     <div class="logo">
-                        <img id="logo-image" alt="CanvasPAL Logo" class="logo-image" />
+                        <img id="canvaspal-logo" alt="CanvasPAL Logo" class="logo-image" width="24" height="24" />
                     </div>
                 </div>
                 <div class="assignments-list" id="assignmentList">
@@ -390,7 +390,7 @@ const createElements = async (): Promise<Elements | null> => {
 
             // Set the logo image src using the extension's icon
             console.log('Debug: Finding logo image element');
-            const logoImg = popup.querySelector('#logo-image') as HTMLImageElement;
+            const logoImg = popup.querySelector('#canvaspal-logo') as HTMLImageElement;
             if (logoImg) {
                 console.log('Debug: Found logo image element, setting src');
                 const iconUrl = chrome.runtime.getURL('icons/icon16.png');
@@ -400,6 +400,14 @@ const createElements = async (): Promise<Elements | null> => {
                 // Add load and error handlers
                 logoImg.onload = () => {
                     console.log('Debug: Logo image loaded successfully');
+                    console.log('Debug: Logo image properties:', {
+                        src: logoImg.src,
+                        width: logoImg.width,
+                        height: logoImg.height,
+                        complete: logoImg.complete,
+                        naturalWidth: logoImg.naturalWidth,
+                        naturalHeight: logoImg.naturalHeight
+                    });
                 };
                 logoImg.onerror = (error) => {
                     console.error('Debug: Logo image failed to load:', error);
