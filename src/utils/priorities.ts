@@ -1,9 +1,14 @@
 import type { CalendarEvent, PrioritySettings } from '../types/models';
 
 interface EnrichedEvent extends CalendarEvent {
+    dueDate: Date;  // Make dueDate required for EnrichedEvent
     gradeWeight?: number;
     pointsPossible?: number;
     currentScore?: number;
+}
+
+function isValidEvent(event: EnrichedEvent): event is EnrichedEvent & { dueDate: Date } {
+    return event.dueDate instanceof Date;
 }
 
 const normalize = (weights: PrioritySettings): PrioritySettings => {
@@ -16,9 +21,13 @@ const normalize = (weights: PrioritySettings): PrioritySettings => {
 };
 
 export const calculatePriority = (
-    event: EnrichedEvent, 
+    event: EnrichedEvent,
     settings: PrioritySettings
 ): number => {
+    if (!isValidEvent(event)) {
+        return 0; // Return lowest priority if no due date
+    }
+
     const normalizedWeights = normalize(settings);
     
     // Due date factor (0 to 10, then normalized to 0-1)

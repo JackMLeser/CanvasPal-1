@@ -2,6 +2,7 @@ declare class BackgroundService {
     private static readonly SYNC_INTERVAL;
     private static readonly RETRY_INTERVAL;
     private gradeData;
+    private dashboardData;
     private lastSyncTime;
     private syncIntervalId?;
     private retryTimeoutId?;
@@ -12,8 +13,8 @@ declare class BackgroundService {
     private logger;
     constructor();
     initialize(): Promise<void>;
-    private initializeMessageHandlers;
     private handleMessage;
+    private handleSettingsUpdate;
     private getAssignments;
     refreshAssignments(): Promise<void>;
     updateAssignmentCompletion(assignmentId: string, completed: boolean): Promise<void>;
@@ -21,15 +22,12 @@ declare class BackgroundService {
     private notifyPopups;
     private setupAutoRefresh;
     private getAssignmentTypeCounts;
-    private fetchCalendarData;
     private handleGradeData;
+    private handleDashboardData;
+    private mergeDashboardData;
+    private findDashboardAssignment;
     private startPeriodicSync;
     performSync(): Promise<void>;
-    private fetchAndProcessAssignments;
-    private enrichAssignmentsWithGrades;
-    private findGradeInfo;
-    private parseICalData;
-    private extractCourseId;
 }
 export declare const backgroundService: BackgroundService;
 export {};

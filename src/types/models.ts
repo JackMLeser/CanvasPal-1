@@ -17,18 +17,34 @@ export interface DashboardData {
     }[];
 }
 
+export interface AssignmentDetails {
+    submissionType?: string[];
+    isCompleted: boolean;
+    isLocked: boolean;
+    description?: string;
+}
+
+export type AssignmentType = 'quiz' | 'assignment' | 'discussion' | 'announcement';
+
 export interface Assignment {
     id: string;
     title: string;
     dueDate: Date;
-    course: string;  // Changed from courseId to course to match existing usage
+    course: string;
     courseId: string;
-    type: string;
-    priorityScore: number;
+    type: AssignmentType | string;
+    points: number;
+    maxPoints: number;
     completed: boolean;
+    priorityScore: number;
+    url: string;
+    details: AssignmentDetails;
+    courseGrade?: number;
     gradeWeight?: number;
-    pointsPossible?: number;
-    currentScore?: number;
+}
+
+export interface EnrichedEvent extends CalendarEvent {
+    dueDate: Date;
 }
 
 export type LogLevel = 'info' | 'error' | 'debug' | 'warn';
@@ -66,15 +82,23 @@ export interface Settings {
 
 export interface CalendarEvent {
     title: string;
-    description: string;
-    startDate: Date;
-    endDate: Date;
+    description?: string;
+    startDate?: Date;
+    endDate?: Date;
     courseId: string;
-    type: string;
+    type?: string;
+    dueDate?: Date;
+    assignmentId?: string;
 }
 
 export interface PrioritySettings {
-    gradeImpactWeight: number;
     dueDateWeight: number;
-    courseGradeWeight: number;
+    gradeWeight: number;
+    difficultyWeight: number;
+}
+
+export interface PriorityWeights {
+    GRADE_IMPACT: number;
+    COURSE_GRADE: number;
+    DUE_DATE: number;
 }

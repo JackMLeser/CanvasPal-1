@@ -2,8 +2,8 @@ import type { CalendarEvent, PrioritySettings, GradeData, DashboardData, Assignm
 import { parseICalFeed } from '../utils/calendar';
 import { calculatePriority } from '../utils/priorities';
 import { logger, LogLevel, Logger } from '../utils/logger';
-import { AssignmentDetector } from '../utils/assignmentDetector';
-import { PriorityCalculator } from '../utils/priorityCalculator';
+import { BackgroundAssignmentDetector } from '../utils/backgroundAssignmentDetector';
+import { BackgroundPriorityCalculator } from '../utils/backgroundPriorityCalculator';
 
 import { Settings } from '../types/models';
 
@@ -23,8 +23,8 @@ class BackgroundService {
     private retryTimeoutId?: number;
     private settings: Settings;
     private assignments: Assignment[] = [];
-    private detector: AssignmentDetector;
-    private priorityCalculator: PriorityCalculator;
+    private detector: BackgroundAssignmentDetector;
+    private priorityCalculator: BackgroundPriorityCalculator;
     private logger: Logger;
 
     constructor() {
@@ -56,8 +56,8 @@ class BackgroundService {
             },
             icalUrl: ''
         };
-        this.detector = new AssignmentDetector();
-        this.priorityCalculator = new PriorityCalculator();
+        this.detector = new BackgroundAssignmentDetector();
+        this.priorityCalculator = new BackgroundPriorityCalculator();
         this.logger = new Logger('BackgroundService');
         this.initialize();
         this.setupAutoRefresh();
@@ -184,12 +184,12 @@ class BackgroundService {
             const newAssignments = await this.detector.detectAssignments();
 
             // Calculate priorities for each assignment
-            newAssignments.forEach(assignment => {
+            newAssignments.forEach((assignment: Assignment) => {
                 assignment.priorityScore = this.priorityCalculator.calculatePriority(assignment);
             });
 
             // Sort by priority
-            newAssignments.sort((a, b) => b.priorityScore - a.priorityScore);
+            newAssignments.sort((a: Assignment, b: Assignment) => b.priorityScore - a.priorityScore);
 
             // Update stored assignments
             this.assignments = newAssignments;
@@ -321,8 +321,15 @@ class BackgroundService {
                         course: courseData.courseName,
                         courseId: courseData.courseName,
                         type: dashboardAssignment.type,
+                        points: 0,
+                        maxPoints: 0,
                         priorityScore: 0,
-                        completed: false
+                        completed: false,
+                        url: '',
+                        details: {
+                            isCompleted: false,
+                            isLocked: false
+                        }
                     };
                     this.assignments.push(newAssignment);
                 }
