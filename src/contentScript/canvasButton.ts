@@ -1,10 +1,16 @@
 // Create and inject the button and popup HTML
 const createElements = async () => {
     try {
+        console.log('Creating CanvasPal elements');
+        
         // Ensure we have access to chrome APIs
         if (!chrome?.runtime) {
             throw new Error('Chrome APIs not available');
         }
+
+        // Get icon URL
+        const iconUrl = chrome.runtime.getURL('icons/icon128.png');
+        console.log('Icon URL:', iconUrl);
 
         // Create and inject styles
         const styleSheet = document.createElement('style');
@@ -115,12 +121,20 @@ const createElements = async () => {
                 font-family: 'Lato', sans-serif;
             }
 
+            .logo {
+                margin-left: 16px;
+                display: flex;
+                align-items: center;
+            }
+
             .logo img {
                 width: 50px;
-                height: auto;
+                height: 50px;
                 border-radius: 20%;
                 border: 3px solid #FFFFFF;
                 padding: 0;
+                background: white;
+                object-fit: contain;
             }
 
             .assignments-list {
@@ -134,6 +148,7 @@ const createElements = async () => {
                 border: 1px solid #eee;
                 margin-bottom: 8px;
                 border-radius: 4px;
+                background: white;
             }
 
             .assignment-item.high-priority {
@@ -164,11 +179,35 @@ const createElements = async () => {
                 transition: background-color 0.3s, transform 0.3s;
                 font-family: 'Lato', sans-serif;
                 cursor: pointer;
+                font-size: 14px;
+                font-weight: 500;
             }
 
             .settings-button button:hover {
                 background-color: #0056b3;
                 transform: scale(1.08);
+            }
+
+            @media (prefers-color-scheme: dark) {
+                .popup-container {
+                    background: #1c1c1e;
+                    border-color: #666;
+                }
+
+                .assignment-item {
+                    background: #2c2c2e;
+                    border-color: #666;
+                    color: white;
+                }
+
+                .logo img {
+                    background: transparent;
+                }
+
+                .canvas-pal-toggle {
+                    background: rgba(45, 59, 69, 0.9);
+                    color: white;
+                }
             }
         `;
         document.head.appendChild(styleSheet);
@@ -198,7 +237,7 @@ const createElements = async () => {
                 <div class="popup-title">CanvasPAL</div>
                 <div class="task-count" id="taskCount">0 Tasks</div>
                 <div class="logo">
-                    <img src="${chrome.runtime.getURL('icons/icon128.png')}" alt="CanvasPAL Logo" />
+                    <img src="${iconUrl}" alt="CanvasPAL Logo" />
                 </div>
             </div>
             <div class="assignments-list" id="assignmentList">
@@ -214,14 +253,13 @@ const createElements = async () => {
         const settingsButton = popup.querySelector('#settings-button');
         if (settingsButton) {
             settingsButton.addEventListener('click', () => {
-                if (chrome?.runtime) {
+                console.log('Settings button clicked');
+                try {
                     const settingsUrl = chrome.runtime.getURL('settings/settings.html');
-                    chrome.runtime.sendMessage({ 
-                        type: 'OPEN_SETTINGS',
-                        url: settingsUrl
-                    }, () => {
-                        window.open(settingsUrl, '_blank');
-                    });
+                    console.log('Opening settings at:', settingsUrl);
+                    window.open(settingsUrl, '_blank');
+                } catch (error) {
+                    console.error('Error opening settings:', error);
                 }
             });
         }
@@ -243,6 +281,7 @@ function getPriorityClass(score: number): string {
 // Helper function to safely update assignments list
 function updateAssignmentsList(assignments: any[], assignmentList: HTMLElement, taskCount: HTMLElement) {
     try {
+        console.log('Updating assignments list:', assignments);
         taskCount.textContent = `${assignments.length} Tasks`;
         assignmentList.innerHTML = assignments.map(assignment => `
             <div class="assignment-item ${getPriorityClass(assignment.priorityScore)}">
@@ -260,6 +299,7 @@ function updateAssignmentsList(assignments: any[], assignmentList: HTMLElement, 
 // Initialize button and popup functionality
 export const initializeButton = async () => {
     try {
+        console.log('Initializing CanvasPal button');
         const isCanvasPage = window.location.href.includes('.instructure.com');
         const elements = await createElements();
         
@@ -336,6 +376,7 @@ export const initializeButton = async () => {
         if (chrome?.runtime) {
             chrome.runtime.onMessage.addListener((message) => {
                 try {
+                    console.log('Received message:', message);
                     if (message.type === 'ASSIGNMENTS_UPDATE') {
                         button.textContent = message.data.length.toString();
                         button.classList.toggle('has-assignments', message.data.length > 0);
@@ -356,8 +397,10 @@ export const initializeButton = async () => {
             });
 
             // Get initial assignments
+            console.log('Requesting initial assignments');
             chrome.runtime.sendMessage({ type: 'GET_ASSIGNMENTS' }, (response) => {
                 try {
+                    console.log('Received initial assignments:', response);
                     if (response?.assignments) {
                         button.textContent = response.assignments.length.toString();
                         button.classList.toggle('has-assignments', response.assignments.length > 0);

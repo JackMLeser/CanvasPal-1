@@ -51,11 +51,14 @@
   "web_accessible_resources": [
     {
       "resources": [
-        "icons/*",
+        "icons/*.png",
+        "icons/*.webp",
         "settings/*",
         "popup/*"
       ],
       "matches": [
+        "*://*.instructure.com/*",
+        "*://*.canvas.com/*",
         "<all_urls>"
       ]
     }
