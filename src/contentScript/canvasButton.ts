@@ -163,6 +163,7 @@ const createElements = async () => {
                 border: none;
                 transition: background-color 0.3s, transform 0.3s;
                 font-family: 'Lato', sans-serif;
+                cursor: pointer;
             }
 
             .settings-button button:hover {
@@ -197,7 +198,7 @@ const createElements = async () => {
                 <div class="popup-title">CanvasPAL</div>
                 <div class="task-count" id="taskCount">0 Tasks</div>
                 <div class="logo">
-                    <img src="${chrome.runtime.getURL('icons/CanvasPAL_logo.webp')}" alt="CanvasPAL Logo" />
+                    <img src="${chrome.runtime.getURL('icons/icon128.png')}" alt="CanvasPAL Logo" />
                 </div>
             </div>
             <div class="assignments-list" id="assignmentList">
@@ -214,7 +215,13 @@ const createElements = async () => {
         if (settingsButton) {
             settingsButton.addEventListener('click', () => {
                 if (chrome?.runtime) {
-                    window.open(chrome.runtime.getURL('settings/settings.html'));
+                    const settingsUrl = chrome.runtime.getURL('settings/settings.html');
+                    chrome.runtime.sendMessage({ 
+                        type: 'OPEN_SETTINGS',
+                        url: settingsUrl
+                    }, () => {
+                        window.open(settingsUrl, '_blank');
+                    });
                 }
             });
         }
@@ -339,9 +346,12 @@ export const initializeButton = async () => {
                         if (assignmentList && taskCount) {
                             updateAssignmentsList(message.data, assignmentList, taskCount);
                         }
+                    } else if (message.type === 'REFRESH_ASSIGNMENTS') {
+                        // Request fresh assignments from the background script
+                        chrome.runtime.sendMessage({ type: 'GET_ASSIGNMENTS' });
                     }
                 } catch (error) {
-                    console.error('Error handling assignment update:', error);
+                    console.error('Error handling message:', error);
                 }
             });
 
@@ -351,6 +361,13 @@ export const initializeButton = async () => {
                     if (response?.assignments) {
                         button.textContent = response.assignments.length.toString();
                         button.classList.toggle('has-assignments', response.assignments.length > 0);
+
+                        const assignmentList = document.getElementById('assignmentList');
+                        const taskCount = document.getElementById('taskCount');
+                        
+                        if (assignmentList && taskCount) {
+                            updateAssignmentsList(response.assignments, assignmentList, taskCount);
+                        }
                     }
                 } catch (error) {
                     console.error('Error getting initial assignments:', error);
