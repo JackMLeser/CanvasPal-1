@@ -388,42 +388,18 @@ const createElements = async (): Promise<Elements | null> => {
                 </div>
             `;
 
-            // Convert base64 to Blob URL
-            const base64WithPrefix = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAIAAACQkWg2AAAACXBIWXMAAAPoAAAD6AG1e1JrAAABklEQVR4nHXS70sTcRwHcP+guLvvnbINNotMaCSsYDNGhI2exMJkUgaW9CD69cC7bJKLVkNdZKzUepDKrdPdLtk6rLboSeGZS7IRtN0uue282ycO7Qfn9ub99MX3++b7bXHSgpMWOhjuyKmzOInjJI5wEuEYhgiEE3vTYgKGc9L88dirnmt9bfY2DGEIJzFEYKgx4HfLcH0z0XOTV1ptrRRBmceQaCdEY0DzvvG50PQN/+mTDycmWV4wtnWWZW02W1Pgur0YjM51+33iSm7fwe6tqgoAXq+3KfBEhOfLuc6egf7z4ZKsGGAkEonmG2g+K22uFUujU8nh6ciSJBpgBAKB3R1/lvwDg7MrIwmuKzSq16Gyrd1K3i+UizpAJpOhKMoKXDSX2yiHHy/w71YBDADYUIoX58eGZrIA4Ha7raCTSa3LlaFYhn3/GcwYsqqdibPc6gfDMBwOhxX47vHXHwnt/U9ef/yyAxRNl1UNANh0kiAIKzgc5kpb6q9qjXmZv/Ag++ar4glLsqormnZzIb6/q2PPBiad+vT9rfTDPjB/aUIU18txcfNntd47teyJsr2xqyRJWsGxMSElfcsXSmq9XqnVZvMFb2TRNSzYR7gT4y/8l4ONXppJH7275I2mDtHmd/y/wafPDnjMi1nB31pA+x3OP0gjhH4DZGWA73ByC8UAAAAASUVORK5CYII=';
-            console.log('Debug: Converting base64 to Blob');
-            
-            // Extract the base64 data after the comma
-            const base64Data = base64WithPrefix.split(',')[1];
-            console.log('Debug: Base64 data length:', base64Data.length);
-            
-            const byteCharacters = atob(base64Data);
-            const byteNumbers = new Array(byteCharacters.length);
-            for (let i = 0; i < byteCharacters.length; i++) {
-                byteNumbers[i] = byteCharacters.charCodeAt(i);
-            }
-            const byteArray = new Uint8Array(byteNumbers);
-            const blob = new Blob([byteArray], { type: 'image/png' });
-            const blobUrl = URL.createObjectURL(blob);
-            console.log('Debug: Created Blob URL:', blobUrl);
-
-            // Set the logo image src
+            // Set the logo image src using the extension's icon
             console.log('Debug: Finding logo image element');
             const logoImg = popup.querySelector('#logo-image') as HTMLImageElement;
             if (logoImg) {
                 console.log('Debug: Found logo image element, setting src');
-                logoImg.src = blobUrl;
+                const iconUrl = chrome.runtime.getURL('icons/icon16.png');
+                console.log('Debug: Using icon URL:', iconUrl);
+                logoImg.src = iconUrl;
                 
                 // Add load and error handlers
                 logoImg.onload = () => {
                     console.log('Debug: Logo image loaded successfully');
-                    console.log('Debug: Logo image properties:', {
-                        src: logoImg.src.substring(0, 50) + '...',
-                        width: logoImg.width,
-                        height: logoImg.height,
-                        complete: logoImg.complete,
-                        naturalWidth: logoImg.naturalWidth,
-                        naturalHeight: logoImg.naturalHeight
-                    });
                 };
                 logoImg.onerror = (error) => {
                     console.error('Debug: Logo image failed to load:', error);
