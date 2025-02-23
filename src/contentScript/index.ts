@@ -2,6 +2,7 @@ console.log('CanvasPal content script loaded');
 
 import { initializeButton } from './canvasButton';
 import { AssignmentDetector } from '../utils/assignmentDetector';
+import { Assignment } from '../types/models';
 
 // Wait for both head and body to be available
 const waitForElements = () => {
@@ -118,3 +119,4 @@ if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initialize);
 } else {
     initialize();
+}

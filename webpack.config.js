@@ -73,21 +73,21 @@ module.exports = {
                         manifest.content_scripts[0].js = ['contentScript/index.js'];
                         manifest.content_scripts[0].css = ['popup/popup.css'];
                         manifest.options_page = 'settings/settings.html';
-                        // Remove default_popup since we're using a custom implementation
-                        delete manifest.action.default_popup;
+                        // Set the popup path
+                        manifest.action.default_popup = 'popup/popup.html';
                         return JSON.stringify(manifest, null, 2);
                     }
                 },
                 // Copy icons
-                { 
+                {
                     from: 'icons/icon16.png',
                     to: 'icons/icon16.png'
                 },
-                { 
+                {
                     from: 'icons/icon48.png',
                     to: 'icons/icon48.png'
                 },
-                { 
+                {
                     from: 'icons/icon128.png',
                     to: 'icons/icon128.png'
                 }

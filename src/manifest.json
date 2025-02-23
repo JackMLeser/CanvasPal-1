@@ -47,16 +47,11 @@
     "web_accessible_resources": [
         {
             "resources": [
-                "icons/*.png",
-                "icons/*.webp",
+                "icons/*",
                 "settings/*",
                 "popup/*"
             ],
-            "matches": [
-                "*://*.instructure.com/*",
-                "*://*.canvas.com/*",
-                "<all_urls>"
-            ]
+            "matches": ["<all_urls>"]
         }
     ],
     "commands": {
