@@ -1,5 +1,135 @@
-// Create and inject the button and popup HTML
-const createElements = async () => {
+// Types
+interface Elements {
+    button: HTMLElement;
+    toggleContainer: HTMLElement;
+    popup: HTMLElement;
+}
+
+interface Assignment {
+    title: string;
+    dueDate: string;
+    course: string;
+    points?: number;
+    maxPoints?: number;
+    priorityScore: number;
+}
+
+interface Settings {
+    displayOptions?: {
+        showOutsideCanvas?: boolean;
+    };
+}
+
+// Helper functions
+const getPriorityClass = (score: number): string => {
+    if (score >= 0.7) return 'high-priority';
+    if (score >= 0.4) return 'medium-priority';
+    return 'low-priority';
+};
+
+const updateAssignmentsList = (assignments: Assignment[], assignmentList: HTMLElement, taskCount: HTMLElement): void => {
+    try {
+        console.log('Updating assignments list:', assignments);
+        taskCount.textContent = `${assignments.length} Tasks`;
+        assignmentList.innerHTML = assignments.map(assignment => `
+            <div class="assignment-item ${getPriorityClass(assignment.priorityScore)}">
+                <div style="font-weight: bold;">${assignment.title}</div>
+                <div>Due: ${new Date(assignment.dueDate).toLocaleString()}</div>
+                <div>Course: ${assignment.course}</div>
+                <div>Points: ${assignment.points !== undefined ? assignment.points : (assignment.maxPoints || 0)}</div>
+            </div>
+        `).join('');
+    } catch (error) {
+        console.error('Error updating assignments list:', error);
+    }
+};
+
+const handleAssignmentUpdates = (button: HTMLElement, message: any): void => {
+    try {
+        console.log('Received message:', message);
+        if (message.type === 'ASSIGNMENTS_UPDATE') {
+            button.textContent = message.data.length.toString();
+            button.classList.toggle('has-assignments', message.data.length > 0);
+
+            const assignmentList = document.getElementById('assignmentList');
+            const taskCount = document.getElementById('taskCount');
+            
+            if (assignmentList && taskCount) {
+                updateAssignmentsList(message.data, assignmentList, taskCount);
+            }
+        } else if (message.type === 'REFRESH_ASSIGNMENTS') {
+            chrome.runtime.sendMessage({ type: 'GET_ASSIGNMENTS' });
+        }
+    } catch (error) {
+        console.error('Error handling message:', error);
+    }
+};
+
+const setupEventListeners = (
+    button: HTMLElement,
+    popup: HTMLElement,
+    toggleContainer: HTMLElement,
+    isCanvasPage: boolean
+): void => {
+    // Handle button click
+    button.addEventListener('click', () => {
+        popup.classList.toggle('show');
+    });
+
+    // Handle toggle change
+    const checkbox = document.getElementById('canvas-pal-visibility');
+    checkbox?.addEventListener('change', (e) => {
+        const target = e.target as HTMLInputElement;
+        if (chrome?.storage?.local) {
+            chrome.storage.local.get('settings', (data) => {
+                try {
+                    const settings = data.settings || { displayOptions: {} };
+                    if (!settings.displayOptions) settings.displayOptions = {};
+                    settings.displayOptions.showOutsideCanvas = target.checked;
+                    chrome.storage.local.set({ settings });
+                    
+                    // Update button visibility
+                    if (!isCanvasPage) {
+                        button.style.display = target.checked ? 'flex' : 'none';
+                    }
+                } catch (error) {
+                    console.error('Error updating settings:', error);
+                }
+            });
+        }
+    });
+
+    // Close popup when clicking outside
+    document.addEventListener('click', (e) => {
+        const target = e.target as HTMLElement;
+        if (!popup.contains(target) && !button.contains(target)) {
+            popup.classList.remove('show');
+        }
+    });
+
+    // Handle assignment updates
+    if (chrome?.runtime) {
+        chrome.runtime.onMessage.addListener((message) => handleAssignmentUpdates(button, message));
+
+        // Get initial assignments
+        console.log('Requesting initial assignments');
+        chrome.runtime.sendMessage({ type: 'GET_ASSIGNMENTS' }, (response) => {
+            try {
+                console.log('Received initial assignments:', response);
+                if (response?.assignments) {
+                    handleAssignmentUpdates(button, {
+                        type: 'ASSIGNMENTS_UPDATE',
+                        data: response.assignments
+                    });
+                }
+            } catch (error) {
+                console.error('Error getting initial assignments:', error);
+            }
+        });
+    }
+};
+
+const createElements = async (): Promise<Elements | null> => {
     try {
         console.log('Creating CanvasPal elements');
         
@@ -122,16 +252,16 @@ const createElements = async () => {
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                width: 50px;
-                height: 50px;
+                width: 32px;
+                height: 32px;
             }
 
             .logo-image {
-                width: 100%;
-                height: 100%;
-                border-radius: 20%;
-                border: 3px solid #FFFFFF;
-                padding: 4px;
+                width: 16px;
+                height: 16px;
+                border-radius: 4px;
+                border: 1px solid #FFFFFF;
+                padding: 2px;
                 background: white;
                 object-fit: contain;
             }
@@ -238,101 +368,74 @@ const createElements = async () => {
         // Create popup container
         const popup = document.createElement('div');
         popup.className = 'popup-container';
-        popup.innerHTML = `
-            <div class="popup-header">
-                <div class="popup-title">CanvasPAL</div>
-                <div class="task-count" id="taskCount">0 Tasks</div>
-                <div class="logo">
-                    <img src="data:image/png;base64,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" alt="CanvasPAL Logo" class="logo-image" />
+        
+        try {
+            // Create popup structure first
+            console.log('Debug: Creating popup HTML structure');
+            popup.innerHTML = `
+                <div class="popup-header">
+                    <div class="popup-title">CanvasPAL</div>
+                    <div class="task-count" id="taskCount">0 Tasks</div>
+                    <div class="logo">
+                        <img id="logo-image" alt="CanvasPAL Logo" class="logo-image" />
+                    </div>
                 </div>
-            </div>
-            <div class="assignments-list" id="assignmentList">
-                <!-- Assignments will be populated here -->
-            </div>
-            <div class="settings-button">
-                <button id="settings-button">Settings</button>
-            </div>
-        `;
-        document.body.appendChild(popup);
+                <div class="assignments-list" id="assignmentList">
+                    <!-- Assignments will be populated here -->
+                </div>
+                <div class="settings-button">
+                    <button id="settings-button">Settings</button>
+                </div>
+            `;
 
-        // No need for complex icon loading since we're using root-relative path
+            // Convert base64 to Blob URL
+            const base64WithPrefix = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAIAAACQkWg2AAAACXBIWXMAAAPoAAAD6AG1e1JrAAABklEQVR4nHXS70sTcRwHcP+guLvvnbINNotMaCSsYDNGhI2exMJkUgaW9CD69cC7bJKLVkNdZKzUepDKrdPdLtk6rLboSeGZS7IRtN0uue282ycO7Qfn9ub99MX3++b7bXHSgpMWOhjuyKmzOInjJI5wEuEYhgiEE3vTYgKGc9L88dirnmt9bfY2DGEIJzFEYKgx4HfLcH0z0XOTV1ptrRRBmceQaCdEY0DzvvG50PQN/+mTDycmWV4wtnWWZW02W1Pgur0YjM51+33iSm7fwe6tqgoAXq+3KfBEhOfLuc6egf7z4ZKsGGAkEonmG2g+K22uFUujU8nh6ciSJBpgBAKB3R1/lvwDg7MrIwmuKzSq16Gyrd1K3i+UizpAJpOhKMoKXDSX2yiHHy/w71YBDADYUIoX58eGZrIA4Ha7raCTSa3LlaFYhn3/GcwYsqqdibPc6gfDMBwOhxX47vHXHwnt/U9ef/yyAxRNl1UNANh0kiAIKzgc5kpb6q9qjXmZv/Ag++ar4glLsqormnZzIb6/q2PPBiad+vT9rfTDPjB/aUIU18txcfNntd47teyJsr2xqyRJWsGxMSElfcsXSmq9XqnVZvMFb2TRNSzYR7gT4y/8l4ONXppJH7275I2mDtHmd/y/wafPDnjMi1nB31pA+x3OP0gjhH4DZGWA73ByC8UAAAAASUVORK5CYII=';
+            console.log('Debug: Converting base64 to Blob');
+            
+            // Extract the base64 data after the comma
+            const base64Data = base64WithPrefix.split(',')[1];
+            console.log('Debug: Base64 data length:', base64Data.length);
+            
+            const byteCharacters = atob(base64Data);
+            const byteNumbers = new Array(byteCharacters.length);
+            for (let i = 0; i < byteCharacters.length; i++) {
+                byteNumbers[i] = byteCharacters.charCodeAt(i);
+            }
+            const byteArray = new Uint8Array(byteNumbers);
+            const blob = new Blob([byteArray], { type: 'image/png' });
+            const blobUrl = URL.createObjectURL(blob);
+            console.log('Debug: Created Blob URL:', blobUrl);
+
+            // Set the logo image src
+            console.log('Debug: Finding logo image element');
+            const logoImg = popup.querySelector('#logo-image') as HTMLImageElement;
+            if (logoImg) {
+                console.log('Debug: Found logo image element, setting src');
+                logoImg.src = blobUrl;
+                
+                // Add load and error handlers
+                logoImg.onload = () => {
+                    console.log('Debug: Logo image loaded successfully');
+                    console.log('Debug: Logo image properties:', {
+                        src: logoImg.src.substring(0, 50) + '...',
+                        width: logoImg.width,
+                        height: logoImg.height,
+                        complete: logoImg.complete,
+                        naturalWidth: logoImg.naturalWidth,
+                        naturalHeight: logoImg.naturalHeight
+                    });
+                };
+                logoImg.onerror = (error) => {
+                    console.error('Debug: Logo image failed to load:', error);
+                };
+            } else {
+                console.error('Debug: Logo image element not found in popup');
+            }
+        } catch (error) {
+            console.error('Debug: Error setting up popup content:', error);
+        }
+
+        document.body.appendChild(popup);
 
         // Add settings button click handler
         const settingsButton = popup.querySelector('#settings-button');
@@ -340,9 +443,11 @@ nYLXj10DTCaTczXK6wwgUNUfQfREFdV+XLr7ggXGAe6bJiwAE1ajjRynwGQG2xh2Rm8B3AD4MGS" alt
             settingsButton.addEventListener('click', () => {
                 console.log('Settings button clicked');
                 try {
-                    const settingsUrl = chrome.runtime.getURL('settings/settings.html');
-                    console.log('Opening settings at:', settingsUrl);
-                    window.open(settingsUrl, '_blank');
+                    chrome.runtime.sendMessage({ type: 'OPEN_OPTIONS_PAGE' }, (response) => {
+                        if (!response?.success) {
+                            console.error('Failed to open settings page');
+                        }
+                    });
                 } catch (error) {
                     console.error('Error opening settings:', error);
                 }
@@ -356,33 +461,7 @@ nYLXj10DTCaTczXK6wwgUNUfQfREFdV+XLr7ggXGAe6bJiwAE1ajjRynwGQG2xh2Rm8B3AD4MGS" alt
     }
 };
 
-// Helper function to determine priority class
-function getPriorityClass(score: number): string {
-    if (score >= 0.7) return 'high-priority';
-    if (score >= 0.4) return 'medium-priority';
-    return 'low-priority';
-}
-
-// Helper function to safely update assignments list
-function updateAssignmentsList(assignments: any[], assignmentList: HTMLElement, taskCount: HTMLElement) {
-    try {
-        console.log('Updating assignments list:', assignments);
-        taskCount.textContent = `${assignments.length} Tasks`;
-        assignmentList.innerHTML = assignments.map(assignment => `
-            <div class="assignment-item ${getPriorityClass(assignment.priorityScore)}">
-                <div style="font-weight: bold;">${assignment.title}</div>
-                <div>Due: ${new Date(assignment.dueDate).toLocaleString()}</div>
-                <div>Course: ${assignment.course}</div>
-                <div>Points: ${assignment.points !== undefined ? assignment.points : (assignment.maxPoints || 0)}</div>
-            </div>
-        `).join('');
-    } catch (error) {
-        console.error('Error updating assignments list:', error);
-    }
-}
-
-// Initialize button and popup functionality
-export const initializeButton = async () => {
+export const initializeButton = async (): Promise<void> => {
     try {
         console.log('Initializing CanvasPal button');
         const isCanvasPage = window.location.href.includes('.instructure.com');
@@ -421,87 +500,7 @@ export const initializeButton = async () => {
             });
         }
 
-        // Handle button click
-        button.addEventListener('click', () => {
-            popup.classList.toggle('show');
-        });
-
-        // Handle toggle change
-        const checkbox = document.getElementById('canvas-pal-visibility');
-        checkbox?.addEventListener('change', (e) => {
-            const target = e.target as HTMLInputElement;
-            if (chrome?.storage?.local) {
-                chrome.storage.local.get('settings', (data) => {
-                    try {
-                        const settings = data.settings || { displayOptions: {} };
-                        if (!settings.displayOptions) settings.displayOptions = {};
-                        settings.displayOptions.showOutsideCanvas = target.checked;
-                        chrome.storage.local.set({ settings });
-                        
-                        // Update button visibility
-                        if (!isCanvasPage) {
-                            button.style.display = target.checked ? 'flex' : 'none';
-                        }
-                    } catch (error) {
-                        console.error('Error updating settings:', error);
-                    }
-                });
-            }
-        });
-
-        // Close popup when clicking outside
-        document.addEventListener('click', (e) => {
-            const target = e.target as HTMLElement;
-            if (!popup.contains(target) && !button.contains(target)) {
-                popup.classList.remove('show');
-            }
-        });
-
-        // Handle assignment updates
-        if (chrome?.runtime) {
-            chrome.runtime.onMessage.addListener((message) => {
-                try {
-                    console.log('Received message:', message);
-                    if (message.type === 'ASSIGNMENTS_UPDATE') {
-                        button.textContent = message.data.length.toString();
-                        button.classList.toggle('has-assignments', message.data.length > 0);
-
-                        const assignmentList = document.getElementById('assignmentList');
-                        const taskCount = document.getElementById('taskCount');
-                        
-                        if (assignmentList && taskCount) {
-                            updateAssignmentsList(message.data, assignmentList, taskCount);
-                        }
-                    } else if (message.type === 'REFRESH_ASSIGNMENTS') {
-                        // Request fresh assignments from the background script
-                        chrome.runtime.sendMessage({ type: 'GET_ASSIGNMENTS' });
-                    }
-                } catch (error) {
-                    console.error('Error handling message:', error);
-                }
-            });
-
-            // Get initial assignments
-            console.log('Requesting initial assignments');
-            chrome.runtime.sendMessage({ type: 'GET_ASSIGNMENTS' }, (response) => {
-                try {
-                    console.log('Received initial assignments:', response);
-                    if (response?.assignments) {
-                        button.textContent = response.assignments.length.toString();
-                        button.classList.toggle('has-assignments', response.assignments.length > 0);
-
-                        const assignmentList = document.getElementById('assignmentList');
-                        const taskCount = document.getElementById('taskCount');
-                        
-                        if (assignmentList && taskCount) {
-                            updateAssignmentsList(response.assignments, assignmentList, taskCount);
-                        }
-                    }
-                } catch (error) {
-                    console.error('Error getting initial assignments:', error);
-                }
-            });
-        }
+        setupEventListeners(button, popup, toggleContainer, isCanvasPage);
     } catch (error) {
         console.error('Error initializing button:', error);
     }

@@ -209,6 +209,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             assignments = [];
             sendResponse({ success: true });
             break;
+
+        case 'OPEN_OPTIONS_PAGE':
+            chrome.runtime.openOptionsPage();
+            sendResponse({ success: true });
+            break;
     }
 
     // Return true to indicate we'll send a response asynchronously

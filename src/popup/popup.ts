@@ -33,20 +33,12 @@ class PopupManager {
             manifest: chrome?.runtime?.getManifest?.()
         });
 
-        // Set the icon URL
-        try {
-            const iconUrl = chrome.runtime.getURL('icons/icon128.png');
-            console.log('Debug: Generated icon URL in popup:', iconUrl);
-            
-            const logoImg = document.getElementById('canvaspal-logo') as HTMLImageElement;
-            if (logoImg) {
-                console.log('Debug: Setting icon src to:', iconUrl);
-                logoImg.src = iconUrl;
-            } else {
-                console.error('Debug: Logo image element not found');
-            }
-        } catch (error) {
-            console.error('Debug: Error setting icon URL in popup:', error);
+        // Set the base64 encoded icon
+        const logoImg = document.getElementById('canvaspal-logo') as HTMLImageElement;
+        if (logoImg) {
+            logoImg.src = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAIAAACQkWg2AAAACXBIWXMAAAPoAAAD6AG1e1JrAAABklEQVR4nHXS70sTcRwHcP+guLvvnbINNotMaCSsYDNGhI2exMJkUgaW9CD69cC7bJKLVkNdZKzUepDKrdPdLtk6rLboSeGZS7IRtN0uue282ycO7Qfn9ub99MX3++b7bXHSgpMWOhjuyKmzOInjJI5wEuEYhgiEE3vTYgKGc9L88dirnmt9bfY2DGEIJzFEYKgx4HfLcH0z0XOTV1ptrRRBmceQaCdEY0DzvvG50PQN/+mTDycmWV4wtnWWZW02W1Pgur0YjM51+33iSm7fwe6tqgoAXq+3KfBEhOfLuc6egf7z4ZKsGGAkEonmG2g+K22uFUujU8nh6ciSJBpgBAKB3R1/lvwDg7MrIwmuKzSq16Gyrd1K3i+UizpAJpOhKMoKXDSX2yiHHy/w71YBDADYUIoX58eGZrIA4Ha7raCTSa3LlaFYhn3/GcwYsqqdibPc6gfDMBwOhxX47vHXHwnt/U9ef/yyAxRNl1UNANh0kiAIKzgc5kpb6q9qjXmZv/Ag++ar4glLsqormnZzIb6/q2PPBiad+vT9rfTDPjB/aUIU18txcfNntd47teyJsr2xqyRJWsGxMSElfcsXSmq9XqnVZvMFb2TRNSzYR7gT4y/8l4ONXppJH7275I2mDtHmd/y/wafPDnjMi1nB31pA+x3OP0gjhH4DZGWA73ByC8UAAAAASUVORK5CYII=';
+        } else {
+            console.error('Debug: Logo image element not found');
         }
 
         this.initializeEventListeners();
@@ -75,7 +67,11 @@ class PopupManager {
             this.showSettings();
         });
 
-        document.getElementById('openDesktop')?.addEventListener('click', () => {
+        const desktopButton = document.getElementById('openDesktop');
+        console.log('Debug: Desktop button element:', desktopButton);
+        
+        desktopButton?.addEventListener('click', () => {
+            console.log('Debug: Desktop button clicked');
             chrome.tabs.create({ url: 'https://www.google.com' });
         });
 

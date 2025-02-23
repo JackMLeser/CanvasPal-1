@@ -350,7 +350,7 @@ body {
   top: 0;
   left: 0;
   right: 0;
-  bottom: 0;
+  bottom: 37px; /* Height of status bar */
   background: var(--background-light);
   z-index: 10;
   padding: 20px;
@@ -512,23 +512,25 @@ body {
 
 /* Logo */
 .logo-button {
-  background: var(--primary-color);
-  color: white;
+  background: none;
   border: none;
-  padding: 4px 8px;
+  padding: 0;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 4px;
-  font-weight: bold;
-  font-size: 14px;
   transition: all 0.2s ease;
 }
 
 .logo-button:hover {
-  background: var(--primary-hover);
   transform: scale(1.1);
+}
+
+#canvaspal-logo {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+  margin-left: 12px;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -550,6 +552,8 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  position: relative;
+  z-index: 15;
 }
 
 .status-buttons {
