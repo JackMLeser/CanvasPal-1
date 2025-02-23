@@ -19,7 +19,7 @@ declare module 'ical.js' {
 declare global {
   type CalendarEvent = {
     title: string;
-    dueDate: Date;
+    dueDate: string;
     courseId: string;
     assignmentId: string;
   };

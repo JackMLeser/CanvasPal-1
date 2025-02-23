@@ -4,7 +4,10 @@ export declare class DebugPanel {
     private logger;
     private performanceMonitor;
     private isVisible;
-    constructor();
+    private debugManager;
+    constructor(debugManager: {
+        isDebugEnabled(): boolean;
+    });
     private createPanel;
     private initializeKeyboardShortcut;
     toggleVisibility(): void;
@@ -18,5 +21,6 @@ export declare class DebugPanel {
     private renderAssignmentList;
     private renderAssignmentDetail;
     logDetectionEvent(message: string, data?: any): void;
+    private formatDate;
     updatePerformanceAnalysis(analysis: any): void;
 }

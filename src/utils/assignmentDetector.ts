@@ -1,5 +1,5 @@
 import { Assignment, AssignmentType, AssignmentDetails } from '../types/models';
-import { Logger } from '../utils/logger';
+import { Logger, LogLevel } from '../utils/logger';
 import { DebugPanel } from './debugPanel';
 import { DateDebugger } from './dateDebugger';
 import { PerformanceMonitor } from './performanceMonitor';
@@ -9,10 +9,16 @@ export class AssignmentDetector {
     private debugPanel: DebugPanel;
     private dateDebugger: DateDebugger;
     private performanceMonitor: PerformanceMonitor;
+    private debugManager: { isDebugEnabled(): boolean };
 
     constructor() {
-        this.logger = new Logger('AssignmentDetector');
-        this.debugPanel = new DebugPanel();
+        // Create debug manager
+        this.debugManager = {
+            isDebugEnabled: () => true // Always enable debug for development
+        };
+
+        this.logger = new Logger('AssignmentDetector', LogLevel.INFO);
+        this.debugPanel = new DebugPanel(this.debugManager);
         this.dateDebugger = new DateDebugger();
         this.performanceMonitor = PerformanceMonitor.getInstance();
     }
@@ -71,9 +77,13 @@ export class AssignmentDetector {
         return this.performanceMonitor.monitorAsync('validateAssignmentDates', async () => {
             assignments.forEach(assignment => {
                 const matchingDateElements = dateMatches.filter(match => {
-                    const matchDate = match.date.getTime();
-                    const assignmentDate = assignment.dueDate.getTime();
-                    return Math.abs(matchDate - assignmentDate) < 24 * 60 * 60 * 1000;
+                    try {
+                        const matchDate = new Date(match.date).getTime();
+                        const assignmentDate = new Date(assignment.dueDate).getTime();
+                        return Math.abs(matchDate - assignmentDate) < 24 * 60 * 60 * 1000;
+                    } catch {
+                        return false;
+                    }
                 });
 
                 if (matchingDateElements.length > 0) {
@@ -186,14 +196,12 @@ export class AssignmentDetector {
         if (!item.plannable || !item.plannable_type) return null;
 
         const type = this.determineAssignmentType(item.plannable_type);
-        const dueDate = item.plannable_date ? new Date(item.plannable_date) : null;
-
-        if (!type || !dueDate) return null;
+        if (!type || !item.plannable_date) return null;
 
         return {
             id: item.plannable_id.toString(),
             title: item.plannable?.title || item.plannable?.name || '',
-            dueDate,
+            dueDate: item.plannable_date,
             course: item.context_name || '',
             courseId: item.course_id?.toString(),
             type,
@@ -217,7 +225,7 @@ export class AssignmentDetector {
         return {
             id: submission.id.toString(),
             title: submission.name || submission.assignment?.name || '',
-            dueDate: new Date(submission.due_at),
+            dueDate: submission.due_at,
             course: submission.course?.name || '',
             courseId: submission.course_id?.toString(),
             type: 'assignment',
@@ -241,7 +249,7 @@ export class AssignmentDetector {
         return {
             id: assignment.id.toString(),
             title: assignment.name || '',
-            dueDate: new Date(assignment.due_at),
+            dueDate: assignment.due_at,
             course: card.shortName || '',
             courseId: card.id?.toString(),
             type,

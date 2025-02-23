@@ -4,7 +4,7 @@ interface PriorityWeights {
     gradeImpact: number;
 }
 export declare function calculatePriorityScore(assignment: {
-    dueDate: Date;
+    dueDate: string;
     gradeWeight?: number;
     pointsPossible?: number;
     currentScore?: number;

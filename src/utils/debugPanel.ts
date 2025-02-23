@@ -7,11 +7,12 @@ export class DebugPanel {
     private logger: Logger;
     private performanceMonitor: PerformanceMonitor;
     private isVisible: boolean = false;
+    private debugManager: { isDebugEnabled(): boolean };
 
-    constructor() {
+    constructor(debugManager: { isDebugEnabled(): boolean }) {
         this.logger = new Logger('DebugPanel');
         this.performanceMonitor = PerformanceMonitor.getInstance();
-        this.createPanel();
+        this.debugManager = debugManager;
         this.initializeKeyboardShortcut();
     }
 
@@ -151,8 +152,8 @@ export class DebugPanel {
 
     private initializeKeyboardShortcut(): void {
         document.addEventListener('keydown', (e) => {
-            // Ctrl/Cmd + Shift + D to toggle debug panel
-            if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'D') {
+            // Only respond to shortcuts if debug mode is enabled
+            if (this.debugManager.isDebugEnabled() && (e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'D') {
                 e.preventDefault();
                 this.toggleVisibility();
             }
@@ -160,10 +161,25 @@ export class DebugPanel {
     }
 
     public toggleVisibility(): void {
-        if (this.panel) {
-            this.isVisible = !this.isVisible;
-            this.panel.style.display = this.isVisible ? 'block' : 'none';
-            this.logger.debug(`Debug panel ${this.isVisible ? 'shown' : 'hidden'}`);
+        // Only allow showing the panel if debug mode is enabled
+        if (this.isVisible || this.debugManager.isDebugEnabled()) {
+            // Create panel if it doesn't exist and we're showing it
+            if (!this.panel && !this.isVisible) {
+                this.createPanel();
+            }
+            
+            if (this.panel) {
+                this.isVisible = !this.isVisible;
+                this.panel.style.display = this.isVisible ? 'block' : 'none';
+                
+                // Remove panel from DOM when hiding it
+                if (!this.isVisible && this.panel.parentNode) {
+                    this.panel.parentNode.removeChild(this.panel);
+                    this.panel = null;
+                }
+                
+                this.logger.debug(`Debug panel ${this.isVisible ? 'shown' : 'hidden'}`);
+            }
         }
     }
 

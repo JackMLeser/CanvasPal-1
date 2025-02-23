@@ -9,7 +9,7 @@ describe('Priority Calculation', () => {
 
     test('calculates priority for assignment with all data', () => {
         const assignment = {
-            dueDate: new Date(Date.now() + 24 * 60 * 60 * 1000), // tomorrow
+            dueDate: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // tomorrow
             gradeWeight: 20,
             pointsPossible: 100,
             currentScore: 0
@@ -22,7 +22,7 @@ describe('Priority Calculation', () => {
 
     test('handles missing grade data gracefully', () => {
         const assignment = {
-            dueDate: new Date(Date.now() + 24 * 60 * 60 * 1000)
+            dueDate: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
         };
 
         const priority = calculatePriorityScore(assignment, mockWeights);

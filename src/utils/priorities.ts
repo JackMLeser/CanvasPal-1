@@ -1,14 +1,26 @@
 import type { CalendarEvent, PrioritySettings } from '../types/models';
 
-interface EnrichedEvent extends CalendarEvent {
-    dueDate: Date;  // Make dueDate required for EnrichedEvent
+export interface EnrichedEvent extends CalendarEvent {
+    dueDate: string;  // Make dueDate required for EnrichedEvent
     gradeWeight?: number;
     pointsPossible?: number;
     currentScore?: number;
 }
 
-function isValidEvent(event: EnrichedEvent): event is EnrichedEvent & { dueDate: Date } {
-    return event.dueDate instanceof Date;
+function isValidEvent(event: EnrichedEvent): event is EnrichedEvent & { dueDate: string } {
+    if (event.dueDate === 'All Day' || event.dueDate === 'No due date') {
+        return false;
+    }
+    // Extract date from "Due: " format if present
+    const dateStr = event.dueDate.startsWith('Due: ') ?
+        event.dueDate.substring(5) : event.dueDate;
+    
+    try {
+        const dueDateObj = new Date(dateStr);
+        return !isNaN(dueDateObj.getTime());
+    } catch {
+        return false;
+    }
 }
 
 const normalize = (weights: PrioritySettings): PrioritySettings => {
@@ -31,7 +43,10 @@ export const calculatePriority = (
     const normalizedWeights = normalize(settings);
     
     // Due date factor (0 to 10, then normalized to 0-1)
-    const daysUntilDue = (event.dueDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24);
+    const dateStr = event.dueDate.startsWith('Due: ') ?
+        event.dueDate.substring(5) : event.dueDate;
+    const dueDateObj = new Date(dateStr);
+    const daysUntilDue = (dueDateObj.getTime() - Date.now()) / (1000 * 60 * 60 * 24);
     let dueScore;
     if (daysUntilDue < 0) {
         // Overdue assignments get maximum priority

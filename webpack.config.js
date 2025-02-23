@@ -34,6 +34,13 @@ module.exports = {
                 exclude: /node_modules/
             },
             {
+                test: /\.css$/,
+                type: 'asset/resource',
+                generator: {
+                    filename: '[path][name][ext]'
+                }
+            },
+            {
                 test: /\.(png|webp|jpg|jpeg)$/i,
                 type: 'asset/resource',
                 generator: {
@@ -71,8 +78,10 @@ module.exports = {
                         // Update paths to match webpack output
                         manifest.background.service_worker = 'background/index.js';
                         manifest.content_scripts[0].js = ['contentScript/index.js'];
+                        manifest.content_scripts[0].css = ['popup/popup.css'];
                         manifest.options_page = 'settings/settings.html';
-                        manifest.action.default_popup = 'popup/popup.html';
+                        // Remove default_popup since we're using a custom implementation
+                        delete manifest.action.default_popup;
                         return JSON.stringify(manifest, null, 2);
                     }
                 },

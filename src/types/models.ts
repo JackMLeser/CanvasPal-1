@@ -74,6 +74,7 @@ export interface Settings {
         showGradeImpact: boolean;
         showPriorityScores: boolean;
         highlightOverdue: boolean;
+        showOutsideCanvas: boolean;
     };
     refreshInterval: number;
     debugSettings: DebugConfig;

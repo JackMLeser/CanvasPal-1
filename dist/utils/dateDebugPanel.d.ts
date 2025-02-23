@@ -16,7 +16,12 @@ interface DateDebugInfo {
 export declare class DateDebugPanel {
     private panel;
     private logger;
-    constructor();
+    private debugManager;
+    private isVisible;
+    constructor(debugManager: {
+        isDebugEnabled(): boolean;
+    });
+    private initializeKeyboardShortcut;
     private createPanel;
     toggleVisibility(): void;
     updateDebugInfo(info: DateDebugInfo): void;

@@ -21,7 +21,8 @@ export class SettingsManager {
             showCourseNames: true,
             showGradeImpact: true,
             showPriorityScores: true,
-            highlightOverdue: true
+            highlightOverdue: true,
+            showOutsideCanvas: true
         },
         refreshInterval: 30,
         debugSettings: {
@@ -85,7 +86,22 @@ export class SettingsManager {
     private async loadSettings(): Promise<void> {
         try {
             const result = await chrome.storage.sync.get('settings');
-            const settings: Settings = result.settings || this.defaultSettings;
+            let settings: Settings = result.settings || this.defaultSettings;
+            
+            // Ensure debug settings are disabled by default
+            settings = {
+                ...settings,
+                debugSettings: {
+                    ...settings.debugSettings,
+                    enabled: false,
+                    showDateDebug: false,
+                    showAssignmentDebug: false,
+                    showPriorityDebug: false
+                }
+            };
+            
+            // Save the settings with debug disabled
+            await chrome.storage.sync.set({ settings });
             this.applySettingsToForm(settings);
         } catch (error) {
             this.logger.error('Error loading settings:', error);
@@ -119,8 +135,10 @@ export class SettingsManager {
             settings.displayOptions.showGradeImpact;
         (document.getElementById('showPriorityScores') as HTMLInputElement).checked = 
             settings.displayOptions.showPriorityScores;
-        (document.getElementById('highlightOverdue') as HTMLInputElement).checked = 
+        (document.getElementById('highlightOverdue') as HTMLInputElement).checked =
             settings.displayOptions.highlightOverdue;
+        (document.getElementById('showOutsideCanvas') as HTMLInputElement).checked =
+            settings.displayOptions.showOutsideCanvas;
 
         // Refresh interval
         (document.getElementById('refreshInterval') as HTMLInputElement).value = 
@@ -170,7 +188,8 @@ export class SettingsManager {
                     showCourseNames: (document.getElementById('showCourseNames') as HTMLInputElement).checked,
                     showGradeImpact: (document.getElementById('showGradeImpact') as HTMLInputElement).checked,
                     showPriorityScores: (document.getElementById('showPriorityScores') as HTMLInputElement).checked,
-                    highlightOverdue: (document.getElementById('highlightOverdue') as HTMLInputElement).checked
+                    highlightOverdue: (document.getElementById('highlightOverdue') as HTMLInputElement).checked,
+                    showOutsideCanvas: (document.getElementById('showOutsideCanvas') as HTMLInputElement).checked
                 },
                 refreshInterval: parseInt((document.getElementById('refreshInterval') as HTMLInputElement).value),
                 debugSettings: {

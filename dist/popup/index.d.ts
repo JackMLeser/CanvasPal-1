@@ -11,6 +11,7 @@ export declare class PopupManager {
     private initializeListeners;
     private fetchAssignments;
     private displayAssignments;
+    private formatDate;
     private handleMessage;
 }
 export declare const popupManager: PopupManager;

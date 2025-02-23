@@ -12,14 +12,14 @@
   ],
   "host_permissions": [
     "*://*.instructure.com/*",
-    "*://*.canvas.com/*"
+    "*://*.canvas.com/*",
+    "<all_urls>"
   ],
   "background": {
     "service_worker": "background/index.js",
     "type": "module"
   },
   "action": {
-    "default_popup": "popup/popup.html",
     "default_icon": {
       "16": "icons/CanvasPAL_logo_16.png",
       "48": "icons/CanvasPAL_logo_48.png",
@@ -36,13 +36,16 @@
     {
       "matches": [
         "*://*.instructure.com/*",
-        "*://*.canvas.com/*"
+        "*://*.canvas.com/*",
+        "<all_urls>"
       ],
       "js": [
         "contentScript/index.js"
       ],
-      "run_at": "document_start",
-      "all_frames": false
+      "css": [
+        "popup/popup.css"
+      ],
+      "run_at": "document_end"
     }
   ],
   "web_accessible_resources": [
@@ -54,22 +57,16 @@
         "settings/*.js",
         "background/*.js",
         "contentScript/*.js",
-        "popup/*.js"
+        "popup/*.js",
+        "popup/*.css",
+        "icons/*.*"
       ],
       "matches": [
-        "*://*.instructure.com/*",
-        "*://*.canvas.com/*"
+        "<all_urls>"
       ]
     }
   ],
   "commands": {
-    "toggle-popup": {
-      "suggested_key": {
-        "default": "Ctrl+Shift+P",
-        "mac": "Command+Shift+P"
-      },
-      "description": "Toggle CanvasPal popup"
-    },
     "refresh-assignments": {
       "suggested_key": {
         "default": "Ctrl+Shift+R",

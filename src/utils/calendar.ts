@@ -10,7 +10,7 @@ export const parseICalFeed = (icalData: string): CalendarEvent[] => {
     const event = new ICAL.Event(vevent);
     return {
       title: event.summary,
-      dueDate: event.startDate.toJSDate(),
+      dueDate: event.startDate.toJSDate().toISOString(),
       courseId: event.uid.split('_')[0],
       assignmentId: event.uid.split('_')[1]
     };

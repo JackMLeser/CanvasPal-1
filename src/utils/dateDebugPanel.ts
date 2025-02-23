@@ -19,88 +19,91 @@ interface DateDebugInfo {
 export class DateDebugPanel {
     private panel: HTMLElement | null = null;
     private logger: Logger;
+    private debugManager: { isDebugEnabled(): boolean };
+    private isVisible: boolean = false;
 
-    constructor() {
+    constructor(debugManager: { isDebugEnabled(): boolean }) {
         this.logger = new Logger('DateDebugPanel');
-        this.createPanel();
+        this.debugManager = debugManager;
+        this.initializeKeyboardShortcut();
+    }
+
+    private initializeKeyboardShortcut(): void {
+        document.addEventListener('keydown', (e) => {
+            if (this.debugManager.isDebugEnabled() && (e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'T') {
+                e.preventDefault();
+                this.toggleVisibility();
+            }
+        });
     }
 
     private createPanel(): void {
-        const initPanel = () => {
-            if (!document.body) {
-                // Wait for body to be available
-                requestAnimationFrame(initPanel);
-                return;
-            }
-
-            this.panel = document.createElement('div');
-            this.panel.id = 'date-debug-panel';
-            this.panel.style.cssText = `
-                position: fixed;
-                bottom: 20px;
-                left: 20px;
-                width: 300px;
-                max-height: 400px;
-                background: rgba(0, 0, 0, 0.9);
-                color: white;
-                padding: 15px;
-                border-radius: 8px;
-                font-family: monospace;
-                font-size: 12px;
-                z-index: 9999;
-                overflow-y: auto;
-                box-shadow: 0 0 10px rgba(0,0,0,0.5);
-                display: none;
-            `;
-
-            const header = document.createElement('div');
-            header.innerHTML = `
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                    <span style="color: #ffd700; font-weight: bold;">📅 Date Detection Debug</span>
-                    <button id="date-debug-close" style="background: none; border: none; color: white; cursor: pointer;">✕</button>
-                </div>
-            `;
-            this.panel.appendChild(header);
-
-            const content = document.createElement('div');
-            content.id = 'date-debug-content';
-            this.panel.appendChild(content);
-
-            document.body.appendChild(this.panel);
-
-            document.getElementById('date-debug-close')?.addEventListener('click', () => {
-                this.toggleVisibility();
-            });
-        };
-
-        // Start the initialization process
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', () => {
-                initPanel();
-                // Add keyboard shortcut after DOM is ready
-                document.addEventListener('keydown', (e) => {
-                    if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'T') {
-                        e.preventDefault();
-                        this.toggleVisibility();
-                    }
-                });
-            });
-        } else {
-            initPanel();
-            // Add keyboard shortcut immediately since DOM is ready
-            document.addEventListener('keydown', (e) => {
-                if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'T') {
-                    e.preventDefault();
-                    this.toggleVisibility();
-                }
-            });
+        if (!document.body) {
+            // Wait for body to be available
+            requestAnimationFrame(() => this.createPanel());
+            return;
         }
+
+        this.panel = document.createElement('div');
+        this.panel.id = 'date-debug-panel';
+        this.panel.style.cssText = `
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            width: 300px;
+            max-height: 400px;
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 12px;
+            z-index: 9999;
+            overflow-y: auto;
+            box-shadow: 0 0 10px rgba(0,0,0,0.5);
+            display: none;
+        `;
+
+        const header = document.createElement('div');
+        header.innerHTML = `
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                <span style="color: #ffd700; font-weight: bold;">📅 Date Detection Debug</span>
+                <button id="date-debug-close" style="background: none; border: none; color: white; cursor: pointer;">✕</button>
+            </div>
+        `;
+        this.panel.appendChild(header);
+
+        const content = document.createElement('div');
+        content.id = 'date-debug-content';
+        this.panel.appendChild(content);
+
+        document.body.appendChild(this.panel);
+
+        document.getElementById('date-debug-close')?.addEventListener('click', () => {
+            this.toggleVisibility();
+        });
     }
 
     public toggleVisibility(): void {
-        if (this.panel) {
-            const isVisible = this.panel.style.display === 'block';
-            this.panel.style.display = isVisible ? 'none' : 'block';
+        // Only allow showing the panel if debug mode is enabled
+        if (this.isVisible || this.debugManager.isDebugEnabled()) {
+            // Create panel if it doesn't exist and we're showing it
+            if (!this.panel && !this.isVisible) {
+                this.createPanel();
+            }
+            
+            if (this.panel) {
+                this.isVisible = !this.isVisible;
+                this.panel.style.display = this.isVisible ? 'block' : 'none';
+                
+                // Remove panel from DOM when hiding it
+                if (!this.isVisible && this.panel.parentNode) {
+                    this.panel.parentNode.removeChild(this.panel);
+                    this.panel = null;
+                }
+                
+                this.logger.debug(`Date debug panel ${this.isVisible ? 'shown' : 'hidden'}`);
+            }
         }
     }
 

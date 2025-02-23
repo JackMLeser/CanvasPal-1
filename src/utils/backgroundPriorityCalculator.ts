@@ -1,4 +1,4 @@
-ximport { Assignment, PriorityWeights } from '../types/models';
+import { Assignment, PriorityWeights } from '../types/models';
 import { Logger } from './logger';
 
 export class BackgroundPriorityCalculator {

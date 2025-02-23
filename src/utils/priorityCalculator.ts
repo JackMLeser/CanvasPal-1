@@ -13,10 +13,16 @@ export class PriorityCalculator {
     private logger: Logger;
     private debugPanel: DebugPanel;
     private performanceMonitor: PerformanceMonitor;
+    private debugManager: { isDebugEnabled(): boolean };
 
     constructor() {
+        // Create debug manager
+        this.debugManager = {
+            isDebugEnabled: () => true // Always enable debug for development
+        };
+
         this.logger = new Logger('PriorityCalculator');
-        this.debugPanel = new DebugPanel();
+        this.debugPanel = new DebugPanel(this.debugManager);
         this.performanceMonitor = PerformanceMonitor.getInstance();
     }
 

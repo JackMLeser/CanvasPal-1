@@ -6,25 +6,73 @@
     <link href="https://fonts.googleapis.com/css?family=Lato" rel="stylesheet">
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>CanvasPAL</h1>
-            <div class="logo">
-                <img src="../icons/CanvasPAL_logo.webp" alt="CanvasPAL Logo" />
+    <!-- Trigger Button -->
+    <button class="assignments-button" id="assignmentsButton">0</button>
+
+    <!-- Popup Container -->
+    <div class="popup-container" id="popupContainer">
+        <div class="popup-header">
+            <div class="header-title">
+                <div class="popup-title">CanvasPAL</div>
+                <div class="task-count" id="taskCount">0 Tasks</div>
             </div>
-        </header>
-        <div class="assignment-list" id="assignmentList">
-            <!-- Assignments will be populated here -->
+            <div class="logo">
+                <img src="../icons/CanvasPAL_logo.webp" alt="CanvasPAL Logo" width="32" height="32" />
+            </div>
         </div>
 
-        <div class="settings-button">
-            <button id="openSettings">Settings</button>
+        <!-- Main Content -->
+        <div class="popup-content">
+            <div class="assignments-list" id="assignmentList">
+                <!-- Assignments will be populated here -->
+            </div>
         </div>
 
+        <!-- Settings Panel -->
+        <div class="settings-content" id="settingsContent">
+            <div class="settings-header">
+                <button class="back-button" id="backButton">
+                    ← Back
+                </button>
+                <h2>Settings</h2>
+            </div>
+            <div class="settings-section">
+                <h3>Display Options</h3>
+                <div class="setting-item">
+                    <div class="setting-label-group">
+                        <label class="setting-label">Show Outside Canvas</label>
+                        <div class="setting-description">Display assignments on non-Canvas pages</div>
+                    </div>
+                    <div class="setting-control">
+                        <input type="checkbox" id="showOutsideCanvas" checked>
+                    </div>
+                </div>
+                <div class="setting-item">
+                    <div class="setting-label-group">
+                        <label class="setting-label">Auto-refresh Interval</label>
+                        <div class="setting-description">How often to check for new assignments</div>
+                    </div>
+                    <div class="setting-control">
+                        <select id="refreshInterval">
+                            <option value="30">30 seconds</option>
+                            <option value="60">1 minute</option>
+                            <option value="300">5 minutes</option>
+                            <option value="600">10 minutes</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Status Bar -->
         <div class="status-bar">
             <span id="data-freshness">Updated: Just Now</span>
+            <button id="openSettings" style="background: none; border: none; color: inherit; cursor: pointer;">
+                Settings
+            </button>
         </div>
     </div>
+
     <script src="popup.js"></script>
 </body>
 </html>

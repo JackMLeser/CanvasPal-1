@@ -17,7 +17,7 @@ declare module 'ical.js' {
 
 export interface CalendarEvent {
   title: string;
-  dueDate: Date;
+  dueDate: string;
   courseId: string;
   assignmentId: string;
 }

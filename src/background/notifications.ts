@@ -38,10 +38,14 @@ export class NotificationManager {
                 const dueDateObj = new Date(dateStr);
                 if (!isNaN(dueDateObj.getTime())) {
                     const timeUntilDue = dueDateObj.getTime() - now.getTime();
-            if (timeUntilDue <= settings.notifications.notifyBefore &&
-                timeUntilDue > 0 &&
-                (!settings.notifications.onlyHighPriority || assignment.priorityScore >= 0.7)) {
-                this.createNotification(assignment);
+                    if (timeUntilDue <= settings.notifications.notifyBefore &&
+                        timeUntilDue > 0 &&
+                        (!settings.notifications.onlyHighPriority || assignment.priorityScore >= 0.7)) {
+                        this.createNotification(assignment);
+                    }
+                }
+            } catch (error) {
+                console.error('Error parsing due date:', error);
             }
         });
     }

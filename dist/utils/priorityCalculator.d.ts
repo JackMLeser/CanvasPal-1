@@ -4,6 +4,7 @@ export declare class PriorityCalculator {
     private logger;
     private debugPanel;
     private performanceMonitor;
+    private debugManager;
     constructor();
     calculatePriority(assignment: Assignment): number;
     private calculateDaysUntilDue;

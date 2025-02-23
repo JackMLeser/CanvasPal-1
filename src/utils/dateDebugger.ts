@@ -11,6 +11,7 @@ interface DateMatch {
 export class DateDebugger {
     private logger: Logger;
     private debugPanel: DateDebugPanel;
+    private debugManager: { isDebugEnabled(): boolean };
     private static readonly DATE_DEBUG_STYLES = `
         .debug-date {
             background-color: rgba(255, 255, 0, 0.3) !important;
@@ -67,8 +68,13 @@ export class DateDebugger {
     `;
 
     constructor() {
+        // Create debug manager
+        this.debugManager = {
+            isDebugEnabled: () => true // Always enable debug for development
+        };
+
         this.logger = new Logger('DateDebugger');
-        this.debugPanel = new DateDebugPanel();
+        this.debugPanel = new DateDebugPanel(this.debugManager);
         this.injectDebugStyles();
     }
 

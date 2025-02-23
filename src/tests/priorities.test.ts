@@ -1,5 +1,6 @@
 import { calculatePriority } from '../utils/priorities';
-import type { CalendarEvent, PrioritySettings } from '../types/models';
+import type { PrioritySettings } from '../types/models';
+import type { EnrichedEvent } from '../utils/priorities';
 
 describe('Priority Calculation', () => {
     const baseSettings: PrioritySettings = {
@@ -13,13 +14,9 @@ describe('Priority Calculation', () => {
         gradeWeight?: number,
         pointsPossible?: number,
         currentScore?: number
-    ): CalendarEvent & { 
-        gradeWeight?: number;
-        pointsPossible?: number;
-        currentScore?: number;
-    } => ({
+    ): EnrichedEvent => ({
         title: 'Test Assignment',
-        dueDate: new Date(Date.now() + daysFromNow * 24 * 60 * 60 * 1000),
+        dueDate: new Date(Date.now() + daysFromNow * 24 * 60 * 60 * 1000).toISOString(),
         courseId: 'TEST101',
         assignmentId: 'test-1',
         gradeWeight,

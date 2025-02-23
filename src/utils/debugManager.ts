@@ -30,8 +30,8 @@ export class DebugManager {
 
     constructor() {
         this.logger = new Logger('DebugManager');
-        this.mainPanel = new DebugPanel();
-        this.datePanel = new DateDebugPanel();
+        this.mainPanel = new DebugPanel(this);
+        this.datePanel = new DateDebugPanel(this);
         this.performanceMonitor = PerformanceMonitor.getInstance();
         this.performanceLogger = new PerformanceLogger();
         this.initializeKeyboardShortcuts();
@@ -100,11 +100,19 @@ export class DebugManager {
 
     private async loadDebugConfig(): Promise<void> {
         try {
-            const result = await chrome.storage.sync.get('debugConfig');
-            if (result.debugConfig) {
-                this.config = { ...this.config, ...result.debugConfig };
-                this.applyConfig();
-            }
+            // Always ensure debug is disabled on load
+            this.config = {
+                ...this.config,
+                enabled: false,
+                showDateDebug: false,
+                showAssignmentDebug: false,
+                showPriorityDebug: false,
+                showPerformanceMetrics: false
+            };
+            
+            // Save the disabled config
+            await chrome.storage.sync.set({ debugConfig: this.config });
+            this.applyConfig();
         } catch (error) {
             this.logger.error('Error loading debug config:', error);
         }

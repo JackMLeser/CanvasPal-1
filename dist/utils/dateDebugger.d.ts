@@ -7,6 +7,7 @@ interface DateMatch {
 export declare class DateDebugger {
     private logger;
     private debugPanel;
+    private debugManager;
     private static readonly DATE_DEBUG_STYLES;
     constructor();
     private injectDebugStyles;

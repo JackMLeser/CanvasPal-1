@@ -87,7 +87,7 @@ export class PopupManager {
                     ${assignment.title}
                 </label>
                 <div class="details">
-                    Due: ${assignment.dueDate.toLocaleDateString()}
+                    Due: ${this.formatDate(assignment.dueDate)}
                     ${assignment.gradeWeight ? `Weight: ${assignment.gradeWeight}%` : ""}
                 </div>
             </div>
@@ -101,6 +101,36 @@ export class PopupManager {
                 }
             });
         });
+    }
+
+    private formatDate(date: string): string {
+        // Handle special cases
+        if (date === 'All Day') {
+            return 'All Day';
+        }
+        if (date === 'No due date') {
+            return 'No due date';
+        }
+
+        // Extract date from "Due: " format if present
+        const dateStr = date.startsWith('Due: ') ? date.substring(5) : date;
+        
+        try {
+            const dateObj = new Date(dateStr);
+            // Check if date parsing was successful
+            if (!isNaN(dateObj.getTime())) {
+                return dateObj.toLocaleDateString('en-US', {
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric'
+                });
+            }
+            // Return original string if parsing fails
+            return date;
+        } catch {
+            // Return original string if parsing fails
+            return date;
+        }
     }
 
     private handleMessage(message: { type: string; timestamp?: number }): void {

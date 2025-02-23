@@ -1,6 +1,6 @@
 import type { CalendarEvent, PrioritySettings } from '../types/models';
-interface EnrichedEvent extends CalendarEvent {
-    dueDate: Date;
+export interface EnrichedEvent extends CalendarEvent {
+    dueDate: string;
     gradeWeight?: number;
     pointsPossible?: number;
     currentScore?: number;

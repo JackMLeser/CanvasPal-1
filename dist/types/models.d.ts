@@ -25,7 +25,7 @@ export type AssignmentType = 'quiz' | 'assignment' | 'discussion' | 'announcemen
 export interface Assignment {
     id: string;
     title: string;
-    dueDate: Date;
+    dueDate: string;
     course: string;
     courseId: string;
     type: AssignmentType | string;
@@ -39,7 +39,7 @@ export interface Assignment {
     gradeWeight?: number;
 }
 export interface EnrichedEvent extends CalendarEvent {
-    dueDate: Date;
+    dueDate: string;
 }
 export type LogLevel = 'info' | 'error' | 'debug' | 'warn';
 export interface DebugConfig {
@@ -66,6 +66,7 @@ export interface Settings {
         showGradeImpact: boolean;
         showPriorityScores: boolean;
         highlightOverdue: boolean;
+        showOutsideCanvas: boolean;
     };
     refreshInterval: number;
     debugSettings: DebugConfig;
@@ -74,11 +75,11 @@ export interface Settings {
 export interface CalendarEvent {
     title: string;
     description?: string;
-    startDate?: Date;
-    endDate?: Date;
+    startDate?: string;
+    endDate?: string;
     courseId: string;
     type?: string;
-    dueDate?: Date;
+    dueDate?: string;
     assignmentId?: string;
 }
 export interface PrioritySettings {
