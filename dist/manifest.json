@@ -50,10 +50,15 @@
       "resources": [
         "*.map",
         "vendors/*.js",
-        "content/*.map"
+        "content/*.map",
+        "settings/*.js",
+        "background/*.js",
+        "contentScript/*.js",
+        "popup/*.js"
       ],
       "matches": [
-        "*://*.instructure.com/*"
+        "*://*.instructure.com/*",
+        "*://*.canvas.com/*"
       ]
     }
   ],

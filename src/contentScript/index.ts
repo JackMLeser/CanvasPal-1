@@ -254,7 +254,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 // Initialize on load
 const initialize = async () => {
-    const waitForBackgroundReady = async (retries = 0, maxRetries = 3) => {
+    const waitForBackgroundReady = async (retries = 0, maxRetries = 3): Promise<boolean> => {
         try {
             // Try to ping the background script
             await chrome.runtime.sendMessage({ type: 'PING' });

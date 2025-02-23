@@ -19,8 +19,8 @@ class BackgroundService {
     private gradeData: { [courseId: string]: GradeData } = {};
     private dashboardData: { [courseId: string]: DashboardData } = {};
     private lastSyncTime = 0;
-    private syncIntervalId?: number;
-    private retryTimeoutId?: number;
+    private syncIntervalId?: NodeJS.Timeout;
+    private retryTimeoutId?: NodeJS.Timeout;
     private settings: Settings;
     private assignments: Assignment[] = [];
     private detector: BackgroundAssignmentDetector;
@@ -464,16 +464,16 @@ class BackgroundService {
 
     private startPeriodicSync(): void {
         if (this.syncIntervalId) {
-            window.clearInterval(this.syncIntervalId);
+            clearInterval(this.syncIntervalId);
             this.syncIntervalId = undefined;
         }
         if (this.retryTimeoutId) {
-            window.clearTimeout(this.retryTimeoutId);
+            clearTimeout(this.retryTimeoutId);
             this.retryTimeoutId = undefined;
         }
 
         void this.performSync();
-        const intervalId = window.setInterval(
+        const intervalId = setInterval(
             () => { void this.performSync(); },
             BackgroundService.SYNC_INTERVAL
         );
@@ -494,7 +494,7 @@ class BackgroundService {
         } catch (error) {
             await this.logger.error('Sync failed', error);
             console.error("Sync failed:", error);
-            const timeoutId = window.setTimeout(() => {
+            const timeoutId = setTimeout(() => {
                 void this.performSync();
             }, BackgroundService.RETRY_INTERVAL);
             this.retryTimeoutId = timeoutId;
@@ -512,15 +512,6 @@ export const backgroundService = new BackgroundService();
 // Initialize background service and set up listeners
 const initializeBackgroundService = async () => {
     try {
-        // Set up global error handlers
-        window.onerror = (message, source, lineno, colno, error) => {
-            console.error('Global error:', { message, source, lineno, colno, error });
-        };
-
-        window.onunhandledrejection = (event) => {
-            console.error('Unhandled promise rejection:', event.reason);
-        };
-
         // Initialize core service
         await backgroundService.initialize();
         console.log('Background service initialized');
