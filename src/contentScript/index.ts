@@ -224,6 +224,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                     });
                 return true; // Keep channel open for async response
 
+            case 'ASSIGNMENTS_UPDATED':
+                console.log('Assignments updated:', message.assignments);
+                // Handle updated assignments if needed
+                sendResponse({ success: true });
+                break;
+
             default:
                 console.warn('Unknown message type:', message.type);
                 sendResponse({ error: 'Unknown message type' });
