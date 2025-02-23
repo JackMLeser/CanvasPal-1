@@ -75,6 +75,10 @@ class PopupManager {
             this.showSettings();
         });
 
+        document.getElementById('openDesktop')?.addEventListener('click', () => {
+            chrome.tabs.create({ url: 'https://www.google.com' });
+        });
+
         document.getElementById('backButton')?.addEventListener('click', () => {
             this.hideSettings();
         });
