@@ -1,74 +1,189 @@
-interface GradeData {
-    courseName: string;
-    assignments: Array<{
-        name: string;
-        points: number;
-        pointsPossible: number;
-        weight: number;
-    }>;
-}
+import { Assignment, AssignmentType } from '../types/models';
 
-function scrapeGrades(): GradeData | null {
-    try {
-        console.log('CanvasPal: Starting grade scraping...');
-        
-        const courseElement = document.querySelector('.course-title');
-        const gradeTable = document.querySelector('.student_assignments');
-        
-        if (!courseElement) {
-            console.warn('CanvasPal: Course title element not found');
-            return null;
-        }
-        
-        if (!gradeTable) {
-            console.warn('CanvasPal: Grade table not found');
-            return null;
-        }
-
-        const courseName = courseElement.textContent?.trim() || 'Unknown Course';
-        console.log('CanvasPal: Found course:', courseName);
-        
-        const rows = gradeTable.querySelectorAll('tr.student_assignment');
-        console.log('CanvasPal: Found', rows.length, 'assignments');
-        
-        const assignments = Array.from(rows).map(row => ({
-            name: row.querySelector('.assignment_name')?.textContent?.trim() || 'Unknown Assignment',
-            points: parseFloat(row.querySelector('.grade')?.textContent?.trim() || '0'),
-            pointsPossible: parseFloat(row.querySelector('.points_possible')?.textContent?.trim() || '0'),
-            weight: parseFloat(row.querySelector('.assignment_weight')?.textContent?.trim() || '0')
-        }));
-
-        const data = { courseName, assignments };
-        console.log('CanvasPal: Successfully scraped data:', data);
-        return data;
-    } catch (error) {
-        console.error('CanvasPal: Error scraping grades:', error);
-        return null;
-    }
-}
-
-// Execute after DOM is fully loaded
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initializeScraper);
-} else {
-    initializeScraper();
-}
-
-function initializeScraper() {
-    console.log('CanvasPal: Initializing grade scraper...');
-    const gradeData = scrapeGrades();
+function scrapeAssignments(): Assignment[] {
+    console.log('CanvasPal: Starting comprehensive assignment detection');
     
-    if (gradeData) {
-        console.log('CanvasPal: Sending grade data to background service...');
-        chrome.runtime.sendMessage({
-            type: 'GRADE_DATA',
-            data: gradeData
-        }).then(() => {
-            console.log('CanvasPal: Grade data sent successfully');
-        }).catch(error => {
-            console.error('CanvasPal: Failed to send grade data:', error);
-        });
-    } else {
-        console.warn('CanvasPal: No grade data found to send');
+    const strategies = [
+        findAssignmentsInDashboard,
+        findAssignmentsInTodoList,
+        findAssignmentsInCourseList,
+        findAssignmentsGeneric
+    ];
+
+    for (const strategy of strategies) {
+        try {
+            const assignments = strategy();
+            if (assignments.length > 0) {
+                console.log(`CanvasPal: Found ${assignments.length} assignments using strategy`);
+                return assignments;
+            }
+        } catch (error) {
+            console.warn(`CanvasPal: Strategy failed:`, error);
+        }
     }
+
+    console.warn('CanvasPal: No assignments found using any strategy');
+    return [];
 }
+
+function findAssignmentsGeneric(): Assignment[] {
+    const selectors = [
+        '.assignment-list-item',
+        '.todo-list-item',
+        '.assignment',
+        '.to-do-item',
+        '[data-assignment-id]',
+        '.ic-DashboardCard__action'
+    ];
+
+    const assignments: Assignment[] = [];
+
+    selectors.forEach(selector => {
+        const elements = document.querySelectorAll(selector);
+        elements.forEach((el, index) => {
+            const titleEl = el.querySelector('.title, .name, .item-title') || el;
+            const courseEl = el.closest('.course-name') || document.querySelector('.course-title');
+            const dueDateEl = el.querySelector('.due-date, .date');
+
+            if (titleEl?.textContent?.trim()) {
+                try {
+                    const assignment: Assignment = {
+                        id: `generic_${index}`,
+                        title: titleEl.textContent.trim(),
+                        course: courseEl?.textContent?.trim() || 'Unknown Course',
+                        dueDate: dueDateEl?.textContent ? new Date(dueDateEl.textContent) : new Date(),
+                        type: 'assignment' as AssignmentType,
+                        priorityScore: Math.random(),
+                        points: 0,
+                        maxPoints: 0,
+                        completed: false,
+                        courseId: undefined,
+                        gradeWeight: undefined,
+                        courseGrade: undefined,
+                        url: undefined,
+                        details: undefined
+                    };
+
+                    assignments.push(assignment);
+                } catch (error) {
+                    console.warn('CanvasPal: Error creating assignment:', error);
+                }
+            }
+        });
+    });
+
+    return assignments;
+}
+
+function findAssignmentsInDashboard(): Assignment[] {
+    const dashboardItems = document.querySelectorAll('.ic-DashboardCard__action, .dashboard-assignment');
+    
+    return Array.from(dashboardItems)
+        .map((el, index) => {
+            const titleEl = el.querySelector('.title, .name');
+            const courseEl = el.closest('.ic-DashboardCard') || document.querySelector('.course-title');
+            const dueDateEl = el.querySelector('.due-date');
+
+            if (!titleEl?.textContent?.trim()) return null;
+
+            return {
+                id: `dashboard_${index}`,
+                title: titleEl.textContent.trim(),
+                course: courseEl?.textContent?.trim() || 'Unknown Course',
+                dueDate: dueDateEl?.textContent ? new Date(dueDateEl.textContent) : new Date(),
+                type: 'assignment' as AssignmentType,
+                priorityScore: Math.random(),
+                points: 0,
+                maxPoints: 0,
+                completed: false,
+                courseId: undefined,
+                gradeWeight: undefined,
+                courseGrade: undefined,
+                url: undefined,
+                details: undefined
+            };
+        })
+        .filter((assignment): assignment is Assignment => assignment !== null);
+}
+
+function findAssignmentsInTodoList(): Assignment[] {
+    const todoItems = document.querySelectorAll('.todo-list .todo-item, .to-do-list .to-do-item');
+    
+    return Array.from(todoItems)
+        .map((el, index) => {
+            const titleEl = el.querySelector('.todo-title, .to-do-title');
+            const courseEl = el.querySelector('.course-name');
+            const dueDateEl = el.querySelector('.due-date');
+
+            if (!titleEl?.textContent?.trim()) return null;
+
+            return {
+                id: `todo_${index}`,
+                title: titleEl.textContent.trim(),
+                course: courseEl?.textContent?.trim() || 'Unknown Course',
+                dueDate: dueDateEl?.textContent ? new Date(dueDateEl.textContent) : new Date(),
+                type: 'assignment' as AssignmentType,
+                priorityScore: Math.random(),
+                points: 0,
+                maxPoints: 0,
+                completed: false,
+                courseId: undefined,
+                gradeWeight: undefined,
+                courseGrade: undefined,
+                url: undefined,
+                details: undefined
+            };
+        })
+        .filter((assignment): assignment is Assignment => assignment !== null);
+}
+
+function findAssignmentsInCourseList(): Assignment[] {
+    const courseItems = document.querySelectorAll('.course-item, .assignment-list-item');
+    
+    return Array.from(courseItems)
+        .map((el, index) => {
+            const titleEl = el.querySelector('.title, .name');
+            const courseEl = el.closest('.course-name') || document.querySelector('.course-title');
+            const dueDateEl = el.querySelector('.due-date');
+
+            if (!titleEl?.textContent?.trim()) return null;
+
+            return {
+                id: `course_${index}`,
+                title: titleEl.textContent.trim(),
+                course: courseEl?.textContent?.trim() || 'Unknown Course',
+                dueDate: dueDateEl?.textContent ? new Date(dueDateEl.textContent) : new Date(),
+                type: 'assignment' as AssignmentType,
+                priorityScore: Math.random(),
+                points: 0,
+                maxPoints: 0,
+                completed: false,
+                courseId: undefined,
+                gradeWeight: undefined,
+                courseGrade: undefined,
+                url: undefined,
+                details: undefined
+            };
+        })
+        .filter((assignment): assignment is Assignment => assignment !== null);
+}
+
+// Message listener for assignment requests
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (message.action === "getAssignments") {
+        console.log('CanvasPal: Received assignment request');
+        const assignments = scrapeAssignments();
+        
+        console.log(`CanvasPal: Sending ${assignments.length} assignments`);
+        
+        sendResponse({ 
+            assignments: assignments,
+            success: assignments.length > 0
+        });
+        
+        return true;  // Indicates we wish to send a response asynchronously
+    }
+});
+
+// Ensure content script is loaded
+console.log('CanvasPal Content Script Loaded');

@@ -32,8 +32,11 @@
   "options_page": "dist/settings/settings.html",
   "content_scripts": [
     {
-      "matches": ["*://*.instructure.com/courses/*/grades"],
-      "js": ["dist/content/gradeScraper.js"]
+      "matches": [
+        "*://*.instructure.com/*"
+      ],
+      "js": ["dist/content/gradeScraper.js"],
+      "run_at": "document_idle"
     }
   ],
   "commands": {
