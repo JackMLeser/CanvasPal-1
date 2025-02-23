@@ -33,24 +33,59 @@ export interface AssignmentDetails {
 export interface Assignment {
     id: string;
     title: string;
+    description: string;
+    courseName: string;
+    courseId: string;
     dueDate: Date;
-    course: string;
-    courseId?: string;
     gradeWeight?: number;
     courseGrade?: number;
-    points?: number;
-    maxPoints?: number;
-    priorityScore: number;
+    priority: number;
     completed: boolean;
-    type: AssignmentType;
+    type: 'quiz' | 'assignment' | 'discussion' | 'announcement';
     url?: string;
-    details?: AssignmentDetails;
+}
+
+export interface Course {
+    id: string;
+    name: string;
+    code: string;
+    grade?: number;
 }
 
 export interface PriorityWeights {
     GRADE_IMPACT: number;
     COURSE_GRADE: number;
     DUE_DATE: number;
+}
+
+export interface DateMatch {
+    type: 'due' | 'availability' | 'unlock' | 'unknown';
+    date: Date;
+    confidence: number;
+    pattern: string;
+    matchedText: string;
+}
+
+export interface DebugInfo {
+    dateMatches: DateMatch[];
+    confidence: number;
+    patterns: string[];
+    matchedText: string[];
+}
+
+export interface PerformanceMetric {
+    name: string;
+    startTime: number;
+    endTime?: number;
+    duration: number;
+    metadata?: Record<string, any>;
+}
+
+export interface PerformanceAnalysis {
+    operation: string;
+    averageDuration: number;
+    trend: 'improving' | 'degrading' | 'stable';
+    percentageChange: number;
 }
 
 export interface AssignmentGroup {

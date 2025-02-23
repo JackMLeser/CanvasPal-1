@@ -1,121 +1,80 @@
 import { Assignment } from '../types/models';
-import { Logger } from '../utils/logger';
+import { logger } from './logger';
 
 export class AssignmentRenderer {
-    private logger: Logger;
-
-    constructor() {
-        this.logger = new Logger('AssignmentRenderer');
-    }
-
-    public renderAssignment(assignment: Assignment): HTMLElement {
-        const assignmentElement = document.createElement('div');
-        assignmentElement.className = this.getAssignmentClasses(assignment);
-        assignmentElement.dataset.id = assignment.id;
-
-        assignmentElement.innerHTML = `
-            <div class="course-name">${this.escapeHtml(assignment.course)}</div>
-            <div class="assignment-header">
-                <span class="assignment-type type-${assignment.type}">${this.capitalizeFirstLetter(assignment.type)}</span>
-                <span class="priority-score">${Math.round(assignment.priorityScore * 100)}%</span>
-            </div>
-            <div class="assignment-title">${this.escapeHtml(assignment.title)}</div>
-            <div class="assignment-details">
-                <div class="detail-item">
-                    <span class="detail-icon">⏰</span>
-                    <span>${this.formatDueDate(assignment.dueDate)}</span>
-                </div>
-                ${this.renderPointsDisplay(assignment)}
-                ${assignment.details ? this.renderAdditionalDetails(assignment.details) : ''}
-            </div>
-            <div class="completion">
-                <input type="checkbox" 
-                    ${assignment.completed ? 'checked' : ''} 
-                    title="Mark as complete"
-                    onclick="handleCompletionToggle('${assignment.id}', this.checked)">
-            </div>
-        `;
-
-        return assignmentElement;
-    }
-
-    private getAssignmentClasses(assignment: Assignment): string {
-        const classes = ['assignment-item'];
-        
-        // Add priority class
-        if (assignment.priorityScore >= 0.7) {
-            classes.push('high-priority');
-        } else if (assignment.priorityScore >= 0.4) {
-            classes.push('medium-priority');
-        } else {
-            classes.push('low-priority');
-        }
-
-        return classes.join(' ');
-    }
-
-    private formatDueDate(date: Date): string {
+    private static formatDueDate(dueDate: Date): string {
         const now = new Date();
-        const diffDays = Math.ceil((date.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-        
-        if (diffDays < 0) {
-            return `Overdue by ${Math.abs(diffDays)} day${Math.abs(diffDays) !== 1 ? 's' : ''}`;
-        } else if (diffDays === 0) {
-            return 'Due today';
-        } else if (diffDays === 1) {
-            return 'Due tomorrow';
-        } else {
-            return `Due in ${diffDays} days`;
-        }
+        const diff = dueDate.getTime() - now.getTime();
+        const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
+
+        if (days < 0) return 'Past due';
+        if (days === 0) return 'Due today';
+        if (days === 1) return 'Due tomorrow';
+        return `Due in ${days} days`;
     }
 
-    private renderPointsDisplay(assignment: Assignment): string {
-        if (!assignment.points && !assignment.maxPoints) return '';
+    private static getPriorityClass(priority: number): string {
+        if (priority >= 0.8) return 'high-priority';
+        if (priority >= 0.5) return 'medium-priority';
+        return 'low-priority';
+    }
 
-        return `
-            <div class="detail-item">
-                <span class="detail-icon">📊</span>
-                <span class="points-display">
-                    ${assignment.points || 0} / ${assignment.maxPoints || 0} points
-                    ${assignment.gradeWeight ? ` (${Math.round(assignment.gradeWeight * 100)}% of grade)` : ''}
-                </span>
-            </div>
+    public static renderAssignment(assignment: Assignment): HTMLElement {
+        const container = document.createElement('div');
+        container.className = `assignment-item ${this.getPriorityClass(assignment.priority)}`;
+        if (assignment.completed) {
+            container.classList.add('completed');
+        }
+
+        const header = document.createElement('div');
+        header.className = 'assignment-header';
+        header.innerHTML = `
+            <h3>${assignment.title}</h3>
+            <span class="course-name">${assignment.courseName}</span>
         `;
-    }
 
-    private renderAdditionalDetails(details: Assignment['details']): string {
-        if (!details) return '';
+        const details = document.createElement('div');
+        details.className = 'assignment-details';
+        details.innerHTML = `
+            <span class="due-date">${this.formatDueDate(assignment.dueDate)}</span>
+            ${assignment.gradeWeight ? `<span class="grade-weight">${assignment.gradeWeight}% of grade</span>` : ''}
+            <span class="priority-score">${Math.round(assignment.priority * 100)}</span>
+        `;
 
-        let detailsHtml = '';
-
-        if (details.submissionType?.length) {
-            detailsHtml += `
-                <div class="detail-item">
-                    <span class="detail-icon">📝</span>
-                    <span>Submit via: ${details.submissionType.join(', ')}</span>
-                </div>
-            `;
+        if (assignment.description) {
+            const description = document.createElement('div');
+            description.className = 'assignment-description';
+            description.textContent = assignment.description;
+            container.appendChild(description);
         }
 
-        if (details.isLocked) {
-            detailsHtml += `
-                <div class="detail-item">
-                    <span class="detail-icon">🔒</span>
-                    <span>Locked</span>
-                </div>
-            `;
+        container.appendChild(header);
+        container.appendChild(details);
+
+        return container;
+    }
+
+    public static renderAssignmentList(assignments: Assignment[]): HTMLElement {
+        const container = document.createElement('div');
+        container.className = 'assignments-list';
+
+        if (assignments.length === 0) {
+            const emptyMessage = document.createElement('div');
+            emptyMessage.className = 'no-assignments';
+            emptyMessage.textContent = 'No assignments found';
+            container.appendChild(emptyMessage);
+            return container;
         }
 
-        return detailsHtml;
-    }
+        assignments.forEach(assignment => {
+            try {
+                const element = this.renderAssignment(assignment);
+                container.appendChild(element);
+            } catch (error) {
+                logger.error('Error rendering assignment:', error);
+            }
+        });
 
-    private escapeHtml(str: string): string {
-        const div = document.createElement('div');
-        div.textContent = str;
-        return div.innerHTML;
-    }
-
-    private capitalizeFirstLetter(str: string): string {
-        return str.charAt(0).toUpperCase() + str.slice(1);
+        return container;
     }
 }

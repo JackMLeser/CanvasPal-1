@@ -1,164 +1,79 @@
-export enum LogLevel {
-    DEBUG = 0,
-    INFO = 1,
-    WARN = 2,
-    ERROR = 3
-}
-
-interface LogEntry {
-    timestamp: string;
-    level: LogLevel;
-    message: string;
-    data?: any;
-    stack?: string;
-}
+export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
 export class Logger {
-    private static readonly MAX_LOGS = 1000;
     private static instance: Logger;
-    private context: string;
-    private currentLevel: LogLevel;
+    private logLevel: LogLevel = 'info';
+    private enabled: boolean = false;
 
-    private constructor(context: string, level: LogLevel = LogLevel.INFO) {
-        this.context = context;
-        this.currentLevel = level;
-        this.cleanOldLogs();
-    }
+    protected constructor() {}
 
-    static getInstance(context: string, level: LogLevel = LogLevel.INFO): Logger {
+    public static getInstance(): Logger {
         if (!Logger.instance) {
-            Logger.instance = new Logger(context, level);
+            Logger.instance = new Logger();
         }
         return Logger.instance;
     }
 
-    setLevel(level: LogLevel): void {
-        this.currentLevel = level;
+    public setLogLevel(level: LogLevel): void {
+        this.logLevel = level;
     }
 
-    debug(message: string, data?: any): void {
-        this.log(LogLevel.DEBUG, message, data);
+    public enable(): void {
+        this.enabled = true;
     }
 
-    info(message: string, data?: any): void {
-        this.log(LogLevel.INFO, message, data);
+    public disable(): void {
+        this.enabled = false;
     }
 
-    warn(message: string, data?: any): void {
-        this.log(LogLevel.WARN, message, data);
+    private shouldLog(level: LogLevel): boolean {
+        if (!this.enabled) return false;
+
+        const levels: LogLevel[] = ['debug', 'info', 'warn', 'error'];
+        return levels.indexOf(level) >= levels.indexOf(this.logLevel);
     }
 
-    error(message: string, data?: any): void {
-        this.log(LogLevel.ERROR, message, data);
-    }
-
-    private log(level: LogLevel, message: string, data?: any): void {
-        if (level >= this.currentLevel) {
-            const timestamp = new Date().toISOString();
-            const prefix = this.getLogPrefix(level);
-            const formattedMessage = `[${timestamp}] ${prefix} [${this.context}] ${message}`;
-
-            if (data) {
-                const formattedData = this.formatLogData(data);
-                console.log(formattedMessage, formattedData);
-            } else {
-                console.log(formattedMessage);
-            }
-
-            const entry: LogEntry = {
-                timestamp,
-                level,
-                message,
-                data,
-                stack: Error().stack
-            };
-
-            this.saveLogs(entry);
-
-            if (level === LogLevel.ERROR) {
-                this.notifyError(entry);
-            }
+    public debug(message: string, ...args: any[]): void {
+        if (this.shouldLog('debug')) {
+            console.debug(`[DEBUG] ${message}`, ...args);
         }
     }
 
-    private getLogPrefix(level: LogLevel): string {
-        switch (level) {
-            case LogLevel.DEBUG:
-                return '🔍 DEBUG:';
-            case LogLevel.INFO:
-                return '📢 INFO:';
-            case LogLevel.WARN:
-                return '⚠️ WARN:';
-            case LogLevel.ERROR:
-                return '❌ ERROR:';
-            default:
-                return '📢';
+    public info(message: string, ...args: any[]): void {
+        if (this.shouldLog('info')) {
+            console.info(`[INFO] ${message}`, ...args);
         }
     }
 
-    private formatLogData(data: any): any {
-        if (data instanceof Element) {
-            return {
-                tagName: data.tagName,
-                id: data.id,
-                className: data.className,
-                textContent: data.textContent?.substring(0, 100) + '...',
-                html: data.outerHTML?.substring(0, 200) + '...'
-            };
+    public warn(message: string, ...args: any[]): void {
+        if (this.shouldLog('warn')) {
+            console.warn(`[WARN] ${message}`, ...args);
         }
-
-        if (Array.isArray(data)) {
-            return data.map(item => this.formatLogData(item));
-        }
-
-        if (data && typeof data === 'object') {
-            const formatted: Record<string, any> = {};
-            for (const [key, value] of Object.entries(data)) {
-                formatted[key] = this.formatLogData(value);
-            }
-            return formatted;
-        }
-
-        return data;
     }
 
-    private async saveLogs(entry: LogEntry): Promise<void> {
-        const { logs = [] } = await chrome.storage.local.get('logs');
-        logs.push(entry);
-
-        if (logs.length > Logger.MAX_LOGS) {
-            logs.splice(0, logs.length - Logger.MAX_LOGS);
+    public error(message: string, ...args: any[]): void {
+        if (this.shouldLog('error')) {
+            console.error(`[ERROR] ${message}`, ...args);
         }
-
-        await chrome.storage.local.set({ logs });
     }
 
-    private async cleanOldLogs(): Promise<void> {
-        const { logs = [] } = await chrome.storage.local.get('logs');
-        const thirtyDaysAgo = new Date();
-        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
-        const filteredLogs = logs.filter((log: LogEntry) => 
-            new Date(log.timestamp) > thirtyDaysAgo
-        );
-
-        await chrome.storage.local.set({ logs: filteredLogs });
+    public group(name: string): void {
+        if (this.enabled) {
+            console.group(name);
+        }
     }
 
-    private notifyError(entry: LogEntry): void {
-        chrome.notifications.create({
-            type: 'basic',
-            iconUrl: 'icons/icon128.png',
-            title: 'CanvasPal Error',
-            message: entry.message,
-            priority: 2
-        });
+    public groupEnd(): void {
+        if (this.enabled) {
+            console.groupEnd();
+        }
     }
 
-    async getLogs(level?: LogLevel): Promise<LogEntry[]> {
-        const { logs = [] } = await chrome.storage.local.get('logs');
-        return level ? logs.filter((log: LogEntry) => log.level === level) : logs;
+    public table(data: any[]): void {
+        if (this.enabled) {
+            console.table(data);
+        }
     }
 }
 
-export const logger = Logger.getInstance('default');
+export const logger = Logger.getInstance();

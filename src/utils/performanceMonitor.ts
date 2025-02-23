@@ -1,118 +1,106 @@
-import { Logger } from './logger';
-
-interface PerformanceMetric {
-    name: string;
-    startTime: number;
-    endTime?: number;
-    duration?: number;
-    metadata?: Record<string, any>;
-}
-
-interface PerformanceReport {
-    metrics: PerformanceMetric[];
-    summary: {
-        totalDuration: number;
-        averageDuration: number;
-        slowestOperation: {
-            name: string;
-            duration: number;
-        };
-        fastestOperation: {
-            name: string;
-            duration: number;
-        };
-    };
-}
+import { logger } from './logger';
+import { PerformanceMetric } from '../types/models';
 
 export class PerformanceMonitor {
-    private metrics: PerformanceMetric[] = [];
-    private logger: Logger;
-    private static instance: PerformanceMonitor;
+    private metrics: Map<string, PerformanceMetric> = new Map();
+    private enabled: boolean = false;
 
-    private constructor() {
-        this.logger = new Logger('PerformanceMonitor');
+    public enable(): void {
+        this.enabled = true;
     }
 
-    public static getInstance(): PerformanceMonitor {
-        if (!PerformanceMonitor.instance) {
-            PerformanceMonitor.instance = new PerformanceMonitor();
-        }
-        return PerformanceMonitor.instance;
+    public disable(): void {
+        this.enabled = false;
     }
 
-    public startMetric(name: string, metadata?: Record<string, any>): string {
-        const id = `${name}_${Date.now()}`;
-        this.metrics.push({
+    public startMetric(name: string, metadata?: Record<string, any>): void {
+        if (!this.enabled) return;
+
+        this.metrics.set(name, {
             name,
             startTime: performance.now(),
+            duration: 0,
             metadata
         });
-        return id;
     }
 
-    public endMetric(name: string): void {
-        const metric = this.metrics.find(m => m.name === name && !m.endTime);
-        if (metric) {
-            metric.endTime = performance.now();
-            metric.duration = metric.endTime - metric.startTime;
-            this.logger.debug(`Performance metric - ${name}:`, {
-                duration: `${metric.duration.toFixed(2)}ms`,
-                metadata: metric.metadata
-            });
+    public endMetric(name: string, additionalMetadata?: Record<string, any>): void {
+        if (!this.enabled) return;
+
+        const metric = this.metrics.get(name);
+        if (!metric) {
+            logger.warn(`No metric found with name: ${name}`);
+            return;
         }
-    }
 
-    public getReport(): PerformanceReport {
-        const completedMetrics = this.metrics.filter(m => m.duration !== undefined);
+        const endTime = performance.now();
+        metric.endTime = endTime;
+        metric.duration = endTime - metric.startTime;
         
-        if (completedMetrics.length === 0) {
-            return {
-                metrics: [],
-                summary: {
-                    totalDuration: 0,
-                    averageDuration: 0,
-                    slowestOperation: { name: 'none', duration: 0 },
-                    fastestOperation: { name: 'none', duration: 0 }
-                }
+        if (additionalMetadata) {
+            metric.metadata = {
+                ...(metric.metadata || {}),
+                ...additionalMetadata
             };
         }
 
-        const totalDuration = completedMetrics.reduce((sum, m) => sum + (m.duration || 0), 0);
-        const averageDuration = totalDuration / completedMetrics.length;
-
-        const sorted = [...completedMetrics].sort((a, b) => 
-            (b.duration || 0) - (a.duration || 0));
-
-        return {
-            metrics: completedMetrics,
-            summary: {
-                totalDuration,
-                averageDuration,
-                slowestOperation: {
-                    name: sorted[0].name,
-                    duration: sorted[0].duration || 0
-                },
-                fastestOperation: {
-                    name: sorted[sorted.length - 1].name,
-                    duration: sorted[sorted.length - 1].duration || 0
-                }
-            }
-        };
+        logger.debug(`Performance metric - ${name}:`, {
+            duration: `${metric.duration.toFixed(2)}ms`,
+            metadata: metric.metadata
+        });
     }
 
-    public clear(): void {
-        this.metrics = [];
+    public getMetric(name: string): PerformanceMetric | undefined {
+        return this.metrics.get(name);
     }
 
-    public monitorAsync<T>(name: string, fn: () => Promise<T>, metadata?: Record<string, any>): Promise<T> {
+    public getAllMetrics(): PerformanceMetric[] {
+        return Array.from(this.metrics.values());
+    }
+
+    public clearMetrics(): void {
+        this.metrics.clear();
+    }
+
+    public async measureAsync<T>(
+        name: string,
+        fn: () => Promise<T>,
+        metadata?: Record<string, any>
+    ): Promise<T> {
+        if (!this.enabled) {
+            return fn();
+        }
+
         this.startMetric(name, metadata);
-        return fn().finally(() => this.endMetric(name));
+        try {
+            const result = await fn();
+            this.endMetric(name);
+            return result;
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            this.endMetric(name, { error: errorMessage });
+            throw error;
+        }
     }
 
-    public monitor<T>(name: string, fn: () => T, metadata?: Record<string, any>): T {
+    public measure<T>(
+        name: string,
+        fn: () => T,
+        metadata?: Record<string, any>
+    ): T {
+        if (!this.enabled) {
+            return fn();
+        }
+
         this.startMetric(name, metadata);
-        const result = fn();
-        this.endMetric(name);
-        return result;
+        try {
+            const result = fn();
+            this.endMetric(name);
+            return result;
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            this.endMetric(name, { error: errorMessage });
+            throw error;
+        }
     }
 }
