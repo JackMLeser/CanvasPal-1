@@ -3,22 +3,6 @@ import { Logger } from './logger';
 import { DebugPanel } from './debugPanel';
 import { PerformanceMonitor } from './performanceMonitor';
 
-export interface Assignment {
-    title: string;
-    dueDate: Date;
-    courseId: string;
-    gradeWeight?: number;
-    pointsPossible?: number;
-    currentScore?: number;
-    completed: boolean;
-}
-
-export interface PriorityWeights {
-    dueDate: number;
-    gradeWeight: number;
-    impact: number;
-}
-
 export class PriorityCalculator {
     private readonly PRIORITY_WEIGHTS: PriorityWeights = {
         GRADE_IMPACT: 0.4,

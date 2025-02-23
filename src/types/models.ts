@@ -42,7 +42,7 @@ export interface Assignment {
     maxPoints?: number;
     priorityScore: number;
     completed: boolean;
-    type: AssignmentType;
+    type: string;
     url?: string;
     details?: AssignmentDetails;
 }

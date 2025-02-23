@@ -1,0 +1,13 @@
+{
+    "extends": "./tsconfig.json",
+    "compilerOptions": {
+        "types": ["jest", "chrome", "node"],
+        "rootDir": ".",
+        "noEmit": true
+    },
+    "include": [
+        "src/**/*",
+        "tests/**/*",
+        "jest.setup.ts"
+    ]
+}

@@ -1,19 +1,4 @@
-// External module declarations
-declare module 'ical.js' {
-    export class Component {
-        constructor(jCal: any);
-        getAllSubcomponents(type: string): Component[];
-        getFirstPropertyValue(prop: string): string | { toJSDate(): Date };
-    }
+// Export all ical.js types
+export * from 'ical.js';
 
-    export class Event {
-        constructor(component: Component);
-        readonly summary: string;
-        readonly startDate: {
-            toJSDate(): Date;
-        };
-        readonly uid: string;
-    }
-
-    export function parse(input: string): any;
-}
+// Add any additional types below if needed

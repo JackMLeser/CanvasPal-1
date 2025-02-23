@@ -1,10 +1,9 @@
 import type { CalendarEvent, PrioritySettings, GradeData, Assignment } from '../types/models';
 import { parseICalFeed } from '../utils/calendar';
 import { calculatePriority } from '../utils/priorities';
-import { logger, LogLevel } from '../utils/logger';
+import { logger, LogLevel, Logger } from '../utils/logger';
 import { AssignmentDetector } from '../utils/assignmentDetector';
 import { PriorityCalculator } from '../utils/priorityCalculator';
-import { Logger } from '../utils/logger';
 
 interface Settings {
     icalUrl: string;
@@ -16,13 +15,13 @@ interface Settings {
     };
 }
 
-export interface ICalEvent extends CalendarEvent {
+interface ICalEvent extends CalendarEvent {
     gradeWeight?: number;
     pointsPossible?: number;
     currentScore?: number;
 }
 
-export class BackgroundService {
+class BackgroundService {
     private static readonly SYNC_INTERVAL = 30 * 60 * 1000;
     private static readonly RETRY_INTERVAL = 5 * 60 * 1000;
     private gradeData: { [courseId: string]: GradeData } = {};
@@ -53,7 +52,7 @@ export class BackgroundService {
         this.setupAutoRefresh();
     }
 
-    private async initialize(): Promise<void> {
+    public async initialize(): Promise<void> {
         // Load settings from sync storage
         const { settings } = await chrome.storage.sync.get('settings');
         if (settings) {
@@ -83,6 +82,11 @@ export class BackgroundService {
 
     private initializeMessageHandlers(): void {
         chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+            if (message.type === 'GRADE_DATA') {
+                this.handleGradeData(message.data);
+                sendResponse({ success: true });
+                return true;
+            }
             this.handleMessage(message, sender, sendResponse);
             return true; // Keep the message channel open for async response
         });
@@ -130,7 +134,7 @@ export class BackgroundService {
         return this.assignments;
     }
 
-    private async refreshAssignments(): Promise<void> {
+    public async refreshAssignments(): Promise<void> {
         try {
             // Get assignments from detector
             const newAssignments = await this.detector.detectAssignments();
@@ -159,7 +163,7 @@ export class BackgroundService {
         }
     }
 
-    private async updateAssignmentCompletion(
+    public async updateAssignmentCompletion(
         assignmentId: string,
         completed: boolean
     ): Promise<void> {
@@ -218,8 +222,16 @@ export class BackgroundService {
     }
 
     private handleGradeData(data: GradeData): void {
-        this.gradeData[data.courseName] = data;
-        chrome.storage.local.set({ [`grades_${data.courseName}`]: data });
+        try {
+            this.logger.info('Received grade data:', data);
+            this.gradeData[data.courseName] = data;
+            chrome.storage.local.set({ 
+                [`grades_${data.courseName}`]: data,
+                lastUpdated: new Date().toISOString()
+            });
+        } catch (error) {
+            this.logger.error('Error handling grade data:', error);
+        }
     }
 
     private startPeriodicSync(): void {
@@ -240,7 +252,7 @@ export class BackgroundService {
         this.syncIntervalId = intervalId;
     }
 
-    private async performSync(): Promise<void> {
+    public async performSync(): Promise<void> {
         try {
             const now = Date.now();
             if (now - this.lastSyncTime < 60000) {
@@ -249,10 +261,10 @@ export class BackgroundService {
 
             await this.fetchAndProcessAssignments();
             this.lastSyncTime = now;
-            await logger.log(LogLevel.INFO, 'Sync completed successfully');
+            await this.logger.info('Sync completed successfully');
             chrome.runtime.sendMessage({ type: "syncComplete", timestamp: now });
         } catch (error) {
-            await logger.log(LogLevel.ERROR, 'Sync failed', error);
+            await this.logger.error('Sync failed', error);
             console.error("Sync failed:", error);
             const timeoutId = window.setTimeout(() => {
                 void this.performSync();
@@ -321,20 +333,23 @@ export class BackgroundService {
     }
 }
 
+// Create and export a singleton instance
 export const backgroundService = new BackgroundService();
 
-// Set up alarm listener for periodic sync
-chrome.alarms.create('sync', { periodInMinutes: 30 });
+// Initialize background service and set up listeners
+backgroundService.initialize().then(() => {
+    // Set up alarm listener for periodic sync
+    chrome.alarms.create('sync', { periodInMinutes: 30 });
+    chrome.alarms.onAlarm.addListener((alarm) => {
+        if (alarm.name === 'sync') {
+            void backgroundService.performSync();
+        }
+    });
 
-chrome.alarms.onAlarm.addListener((alarm) => {
-    if (alarm.name === 'sync') {
-        void backgroundService.performSync();
-    }
-});
-
-// Add keyboard command listener
-chrome.commands.onCommand.addListener((command) => {
-    if (command === 'refresh-assignments') {
-        void backgroundService.performSync();
-    }
+    // Add keyboard command listener
+    chrome.commands.onCommand.addListener((command) => {
+        if (command === 'refresh-assignments') {
+            void backgroundService.performSync();
+        }
+    });
 });

@@ -15,21 +15,22 @@ interface LogEntry {
 
 export class Logger {
     private static readonly MAX_LOGS = 1000;
-    private static instance: Logger;
+    private static instances: Map<string, Logger> = new Map();
     private context: string;
     private currentLevel: LogLevel;
 
-    private constructor(context: string, level: LogLevel = LogLevel.INFO) {
+    public constructor(context: string, level: LogLevel = LogLevel.INFO) {
         this.context = context;
         this.currentLevel = level;
         this.cleanOldLogs();
     }
 
-    static getInstance(context: string, level: LogLevel = LogLevel.INFO): Logger {
-        if (!Logger.instance) {
-            Logger.instance = new Logger(context, level);
+    public static getInstance(context: string, level: LogLevel = LogLevel.INFO): Logger {
+        const key = `${context}-${level}`;
+        if (!this.instances.has(key)) {
+            this.instances.set(key, new Logger(context, level));
         }
-        return Logger.instance;
+        return this.instances.get(key)!;
     }
 
     setLevel(level: LogLevel): void {
@@ -52,14 +53,14 @@ export class Logger {
         this.log(LogLevel.ERROR, message, data);
     }
 
-    private log(level: LogLevel, message: string, data?: any): void {
+    public async log(level: LogLevel, message: string, ...args: any[]): Promise<void> {
         if (level >= this.currentLevel) {
             const timestamp = new Date().toISOString();
             const prefix = this.getLogPrefix(level);
             const formattedMessage = `[${timestamp}] ${prefix} [${this.context}] ${message}`;
 
-            if (data) {
-                const formattedData = this.formatLogData(data);
+            if (args.length) {
+                const formattedData = this.formatLogData(args);
                 console.log(formattedMessage, formattedData);
             } else {
                 console.log(formattedMessage);
@@ -69,7 +70,7 @@ export class Logger {
                 timestamp,
                 level,
                 message,
-                data,
+                data: args,
                 stack: Error().stack
             };
 

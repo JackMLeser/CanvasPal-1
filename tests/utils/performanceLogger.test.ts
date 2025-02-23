@@ -3,19 +3,10 @@ import { chrome } from 'jest-chrome';
 
 describe('PerformanceLogger', () => {
     let performanceLogger: PerformanceLogger;
-    const mockLog = {
-        timestamp: Date.now(),
-        metrics: [
-            { name: 'operation1', duration: 100 },
-            { name: 'operation2', duration: 200 }
-        ],
-        summary: {
-            totalDuration: 300,
-            averageDuration: 150,
-            slowestOperation: 'operation2',
-            fastestOperation: 'operation1'
-        }
-    };
+    const mockMetrics = [
+        { name: 'operation1', duration: 100 },
+        { name: 'operation2', duration: 200 }
+    ];
 
     beforeEach(() => {
         performanceLogger = new PerformanceLogger();
@@ -30,27 +21,27 @@ describe('PerformanceLogger', () => {
 
     describe('Log Management', () => {
         it('should save performance logs', async () => {
-            await performanceLogger.logPerformance(mockLog);
+            await performanceLogger.logPerformance(mockMetrics);
             expect(chrome.storage.local.set).toHaveBeenCalled();
         });
 
         it('should retrieve performance logs', async () => {
             chrome.storage.local.get.mockImplementation(() => 
-                Promise.resolve({ performanceLogs: [mockLog] })
+                Promise.resolve({ performanceLogs: [mockMetrics] })
             );
 
             const logs = await performanceLogger.getLogs();
             expect(logs).toHaveLength(1);
-            expect(logs[0]).toEqual(mockLog);
+            expect(logs[0]).toEqual(mockMetrics);
         });
 
         it('should limit the number of stored logs', async () => {
-            const manyLogs = Array(150).fill(mockLog);
+            const manyLogs = Array(150).fill(mockMetrics);
             chrome.storage.local.get.mockImplementation(() => 
                 Promise.resolve({ performanceLogs: manyLogs })
             );
 
-            await performanceLogger.logPerformance(mockLog);
+            await performanceLogger.logPerformance(mockMetrics);
             expect(chrome.storage.local.set).toHaveBeenCalled();
             const setCall = chrome.storage.local.set.mock.calls[0][0];
             expect(setCall.performanceLogs.length).toBeLessThanOrEqual(100);
@@ -63,28 +54,20 @@ describe('PerformanceLogger', () => {
     });
 
     describe('Performance Analysis', () => {
-        const mockHistoricalLogs = [
-            {
-                timestamp: Date.now(),
-                metrics: [
-                    { name: 'op1', duration: 100 },
-                    { name: 'op2', duration: 150 }
-                ],
-                summary: { totalDuration: 250, averageDuration: 125, slowestOperation: 'op2', fastestOperation: 'op1' }
-            },
-            {
-                timestamp: Date.now() - 1000,
-                metrics: [
-                    { name: 'op1', duration: 120 },
-                    { name: 'op2', duration: 140 }
-                ],
-                summary: { totalDuration: 260, averageDuration: 130, slowestOperation: 'op2', fastestOperation: 'op1' }
-            }
+        const mockHistoricalMetrics = [
+            [
+                { name: 'op1', duration: 100 },
+                { name: 'op2', duration: 150 }
+            ],
+            [
+                { name: 'op1', duration: 120 },
+                { name: 'op2', duration: 140 }
+            ]
         ];
 
         beforeEach(() => {
             chrome.storage.local.get.mockImplementation(() => 
-                Promise.resolve({ performanceLogs: mockHistoricalLogs })
+                Promise.resolve({ performanceLogs: mockHistoricalMetrics })
             );
         });
 
@@ -116,7 +99,7 @@ describe('PerformanceLogger', () => {
 
         it('should handle insufficient data gracefully', async () => {
             chrome.storage.local.get.mockImplementation(() => 
-                Promise.resolve({ performanceLogs: [mockLog] })
+                Promise.resolve({ performanceLogs: [mockMetrics] })
             );
 
             const analysis = await performanceLogger.getPerformanceAnalysis();
@@ -130,7 +113,7 @@ describe('PerformanceLogger', () => {
                 Promise.reject(new Error('Storage error'))
             );
 
-            await performanceLogger.logPerformance(mockLog);
+            await performanceLogger.logPerformance(mockMetrics);
             // Should not throw, just log the error
         });
 

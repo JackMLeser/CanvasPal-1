@@ -4,10 +4,9 @@ import { ChromeMessage, MessageCallback } from '../../src/types/chrome';
 
 describe('BackgroundService', () => {
     let mockMessageHandler: jest.Mock;
-
+    
     beforeEach(() => {
         jest.useFakeTimers();
-
         // Setup storage mocks first
         (chrome.storage.local.get as jest.Mock)
             .mockImplementation(() => Promise.resolve({}));
@@ -16,9 +15,8 @@ describe('BackgroundService', () => {
                 icalUrl: 'https://example.com/calendar.ics',
                 weights: { dueDate: 33, gradeWeight: 33, impact: 34 }
             }));
-
         // Setup message handling
-        const messageHandler = (msg: any, sender: any, sendResponse: any) => {
+        mockMessageHandler = jest.fn((msg: any, sender: any, sendResponse: any) => {
             if (msg.type === 'fetchAssignments') {
                 sendResponse([]);
                 return true;
@@ -30,14 +28,10 @@ describe('BackgroundService', () => {
                 return true;
             }
             return true;
-        };
-
-        (chrome.runtime.onMessage.addListener as jest.Mock)
-            .mockImplementation(callback => {
-                callback({ type: 'fetchAssignments' }, {}, () => {});
-                return true;
-            });
-
+        });
+        
+        chrome.runtime.onMessage.addListener(mockMessageHandler);
+        
         // Initialize service
         backgroundService;
         jest.runAllTimers();
@@ -59,19 +53,22 @@ describe('BackgroundService', () => {
                 }
             };
             chrome.storage.local.get.mockImplementation(() => Promise.resolve(storedData));
-
-            await jest.runAllTimersAsync();
+            await jest.runAllTimers();
             expect(chrome.storage.local.get).toHaveBeenCalledWith(null);
         });
 
         it('should start periodic sync on installation', () => {
-            installedCallback({
+            // Get the installation callback directly from chrome.runtime.onInstalled.addListener
+            const installCallback = (chrome.runtime.onInstalled.addListener as jest.Mock).mock.calls[0][0];
+            
+            // Call the callback with installation details
+            installCallback({
                 reason: 'install',
                 previousVersion: undefined,
                 id: undefined
             });
+            
             jest.advanceTimersByTime(30 * 60 * 1000);
-
             expect(chrome.runtime.sendMessage).toHaveBeenCalledWith(
                 expect.objectContaining({ type: 'syncComplete' })
             );

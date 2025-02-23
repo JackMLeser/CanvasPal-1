@@ -9,8 +9,8 @@ module.exports = {
     },
     output: {
         path: path.resolve(__dirname, 'dist'),
-        filename: '[name].js',  // This will maintain directory structure
-        chunkFilename: 'vendors/[name].js'  // Added to control vendor chunk output
+        filename: '[name].js',
+        clean: true // Clean the dist folder before each build
     },
     module: {
         rules: [
@@ -20,13 +20,12 @@ module.exports = {
                     {
                         loader: 'ts-loader',
                         options: {
-                            configFile: path.resolve(__dirname, './tsconfig.json'),
-                            onlyCompileBundledFiles: true,
+                            configFile: 'tsconfig.json',
                             transpileOnly: false,
-                            logLevel: 'info',
                             compilerOptions: {
-                                module: 'esnext',
-                                moduleResolution: 'node'
+                                module: 'commonjs',
+                                esModuleInterop: true,
+                                allowSyntheticDefaultImports: true
                             }
                         }
                     }
@@ -37,44 +36,23 @@ module.exports = {
     },
     resolve: {
         extensions: ['.ts', '.js'],
-        modules: ['node_modules', path.resolve(__dirname, 'src')],
-        alias: {
-            '@': path.resolve(__dirname, 'src')
-        }
+        modules: ['node_modules', path.resolve(__dirname, 'src')]
     },
     plugins: [
         new CopyPlugin({
             patterns: [
-                { 
-                    from: 'src/popup/popup.html',
-                    to: 'popup/popup.html'  // Updated to match manifest structure
-                },
-                { 
-                    from: 'src/popup/popup.css',
-                    to: 'popup/popup.css'  // Updated to match manifest structure
-                },
-                { 
-                    from: 'src/settings/settings.html',
-                    to: 'settings/settings.html'  // Updated to match manifest structure
-                },
-                { 
-                    from: 'src/settings/settings.css',
-                    to: 'settings/settings.css'  // Updated to match manifest structure
-                },
-                { 
-                    from: 'src/manifest.json',
-                    to: 'manifest.json'
-                },
-                {
-                    from: 'icons/*.png',
-                    to: 'icons/[name][ext]'
-                }
+                { from: 'src/popup/popup.html', to: 'popup/popup.html' },
+                { from: 'src/popup/popup.css', to: 'popup/popup.css' },
+                { from: 'src/settings/settings.html', to: 'settings/settings.html' },
+                { from: 'src/settings/settings.css', to: 'settings/settings.css' },
+                { from: 'manifest.json', to: 'manifest.json' },
+                { from: 'icons/*.png', to: 'icons/[name][ext]' }
             ]
         })
     ],
     optimization: {
         splitChunks: {
-            chunks: 'all',
+            chunks: 'async', // Change to async to avoid splitting content scripts
             cacheGroups: {
                 vendor: {
                     test: /[\\/]node_modules[\\/]/,
@@ -84,10 +62,7 @@ module.exports = {
             }
         }
     },
+    mode: 'production',
     devtool: 'source-map',
-    stats: {
-        errorDetails: true,
-        children: true,
-        logging: 'verbose'
-    }
+    target: 'web'  // Ensure proper web environment targeting
 };

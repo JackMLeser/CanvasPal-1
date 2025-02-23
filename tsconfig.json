@@ -8,29 +8,31 @@
         "forceConsistentCasingInFileNames": true,
         "moduleResolution": "node",
         "outDir": "./dist",
-        "rootDir": ".",
+        "rootDir": "./src",
         "baseUrl": "src",
         "paths": {
             "@/*": ["./*"]
         },
-        "typeRoots": ["./node_modules/@types", "./src/types"],
-        "types": ["jest", "chrome", "node"],
+        "typeRoots": [
+            "./node_modules/@types",
+            "./src/types"
+        ],
+        "types": ["chrome", "node"],
         "allowJs": true,
         "declaration": true,
         "lib": ["dom", "es2020"],
         "noEmitOnError": true,
-        "pretty": true,
-        "diagnostics": true,
-        "extendedDiagnostics": true,
-        "listEmittedFiles": true
+        "sourceMap": true,
+        "resolveJsonModule": true,
+        "allowSyntheticDefaultImports": true
     },
     "include": [
-        "src/**/*",
-        "tests/**/*",
-        "jest.setup.ts"
+        "src/**/*"
     ],
     "exclude": [
         "node_modules",
-        "dist"
+        "dist",
+        "**/*.test.ts",
+        "tests/**/*"
     ]
 }

@@ -1,3 +1,8 @@
 import type { CalendarEvent, PrioritySettings } from '../types/models';
-export declare const calculatePriority: (event: CalendarEvent, settings: PrioritySettings) => number;
+interface EnrichedEvent extends CalendarEvent {
+    gradeWeight?: number;
+    pointsPossible?: number;
+    currentScore?: number;
+}
+export declare const calculatePriority: (event: EnrichedEvent, settings: PrioritySettings) => number;
 export type { PrioritySettings };

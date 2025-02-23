@@ -1,23 +1,15 @@
-export interface Assignment {
-    title: string;
-    dueDate: Date;
-    courseId: string;
-    gradeWeight?: number;
-    pointsPossible?: number;
-    currentScore?: number;
-    completed: boolean;
-}
-export interface PriorityWeights {
-    dueDate: number;
-    gradeWeight: number;
-    impact: number;
-}
+import { Assignment, PriorityWeights } from '../types/models';
 export declare class PriorityCalculator {
-    private static readonly GRADE_THRESHOLDS;
-    private static readonly URGENCY_THRESHOLDS;
-    private static normalizeWeights;
-    private static calculateDueDateFactor;
-    private static calculateGradeWeightFactor;
-    private static calculateImpactFactor;
-    static calculatePriority(assignment: Assignment, allAssignments: Assignment[], weights: PriorityWeights): number;
+    private readonly PRIORITY_WEIGHTS;
+    private logger;
+    private debugPanel;
+    private performanceMonitor;
+    constructor();
+    calculatePriority(assignment: Assignment): number;
+    private calculateDaysUntilDue;
+    private calculateDueDatePriority;
+    private calculateGradeImpact;
+    private calculateCourseGradeImpact;
+    private getTypeWeight;
+    setPriorityWeights(weights: Partial<PriorityWeights>): void;
 }

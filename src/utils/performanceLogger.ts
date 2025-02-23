@@ -15,6 +15,15 @@ interface PerformanceLog {
     };
 }
 
+type Trend = 'improving' | 'degrading' | 'stable';
+
+interface PerformanceMetric {
+    name: string;
+    duration: number;
+    metadata?: Record<string, any>;
+    trend?: Trend;
+}
+
 export class PerformanceLogger {
     private logger: Logger;
     private static readonly MAX_LOGS = 100;
@@ -24,21 +33,47 @@ export class PerformanceLogger {
         this.logger = new Logger('PerformanceLogger');
     }
 
-    public async logPerformance(metrics: PerformanceLog): Promise<void> {
+    public async logPerformance(metrics: { name: string; duration: number; metadata?: Record<string, any> }[]): Promise<void> {
         try {
             const logs = await this.getLogs();
-            logs.unshift(metrics);
+            const log: PerformanceLog = {
+                timestamp: Date.now(),
+                metrics,
+                summary: this.calculateSummary(metrics)
+            };
+            
+            logs.unshift(log);
             
             // Keep only the most recent logs
             while (logs.length > PerformanceLogger.MAX_LOGS) {
                 logs.pop();
             }
-
             await chrome.storage.local.set({ [PerformanceLogger.STORAGE_KEY]: logs });
-            this.logger.debug('Performance log saved:', metrics);
+            this.logger.debug('Performance log saved:', log);
         } catch (error) {
             this.logger.error('Error saving performance log:', error);
         }
+    }
+
+    private calculateSummary(metrics: { name: string; duration: number }[]): PerformanceLog['summary'] {
+        if (metrics.length === 0) {
+            return {
+                totalDuration: 0,
+                averageDuration: 0,
+                slowestOperation: '',
+                fastestOperation: ''
+            };
+        }
+
+        const totalDuration = metrics.reduce((sum, m) => sum + m.duration, 0);
+        const sortedMetrics = [...metrics].sort((a, b) => b.duration - a.duration);
+
+        return {
+            totalDuration,
+            averageDuration: totalDuration / metrics.length,
+            slowestOperation: sortedMetrics[0].name,
+            fastestOperation: sortedMetrics[sortedMetrics.length - 1].name
+        };
     }
 
     public async getLogs(): Promise<PerformanceLog[]> {
@@ -55,7 +90,7 @@ export class PerformanceLogger {
         trends: {
             operation: string;
             averageDuration: number;
-            trend: 'improving' | 'degrading' | 'stable';
+            trend: Trend;
             percentageChange: number;
         }[];
         hotspots: {
@@ -97,8 +132,7 @@ export class PerformanceLogger {
             return {
                 operation,
                 averageDuration: recentAvg,
-                trend: percentageChange < -5 ? 'improving' :
-                       percentageChange > 5 ? 'degrading' : 'stable',
+                trend: this.calculateTrend(percentageChange),
                 percentageChange
             };
         });
@@ -121,6 +155,12 @@ export class PerformanceLogger {
 
     private calculateAverage(numbers: number[]): number {
         return numbers.reduce((sum, n) => sum + n, 0) / numbers.length;
+    }
+
+    private calculateTrend(value: number): Trend {
+        if (value < -5) return 'improving';
+        if (value > 5) return 'degrading';
+        return 'stable';
     }
 
     private generateRecommendations(

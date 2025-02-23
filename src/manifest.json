@@ -14,8 +14,7 @@
 		"*://*.instructure.com/*"
 	],
 	"background": {
-		"service_worker": "background/index.js",
-		"type": "module"
+		"service_worker": "background/index.js"
 	},
 	"action": {
 		"default_popup": "popup/popup.html",
@@ -34,12 +33,12 @@
 	"content_scripts": [
 		{
 			"matches": ["*://*.instructure.com/courses/*/grades"],
-			"js": ["vendors/vendor.js", "content/gradeScraper.js"]
+			"js": ["content/gradeScraper.js"]
 		}
 	],
 	"web_accessible_resources": [
 		{
-			"resources": ["vendors/*.js"],
+			"resources": ["*.map", "vendors/*.js", "content/*.map"],
 			"matches": ["*://*.instructure.com/*"]
 		}
 	],

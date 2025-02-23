@@ -1,4 +1,4 @@
-import { Assignment } from '../types/models';
+import { Assignment as CanvasAssignment } from '../types/models';
 import { AssignmentRenderer } from '../utils/assignmentRenderer';
 import { Logger } from '../utils/logger';
 import { DebugManager } from '../utils/debugManager';
@@ -24,7 +24,7 @@ interface Settings {
 }
 
 class PopupManager {
-    private assignments: Assignment[] = [];
+    private assignments: CanvasAssignment[] = [];
     private renderer: AssignmentRenderer;
     private logger: Logger;
     private debugManager: DebugManager;
@@ -116,7 +116,7 @@ class PopupManager {
         });
     }
 
-    private filterAssignments(): Assignment[] {
+    private filterAssignments(): CanvasAssignment[] {
         return this.assignments.filter(assignment => {
             if (this.typeFilter !== 'all' && assignment.type !== this.typeFilter) {
                 return false;

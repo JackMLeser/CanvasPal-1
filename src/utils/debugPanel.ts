@@ -294,4 +294,8 @@ export class DebugPanel {
         this.logger.debug(message, data);
         // Could add visual indication of new events in the panel
     }
+
+    public updatePerformanceAnalysis(analysis: any): void {
+        // Implementation
+    }
 }

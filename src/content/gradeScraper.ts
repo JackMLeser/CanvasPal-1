@@ -8,62 +8,67 @@ interface GradeData {
     }>;
 }
 
-class GradeScraper {
-    private static readonly GRADE_TABLE_SELECTOR = '.student_assignments';
-    private static readonly COURSE_NAME_SELECTOR = '.course-title';
-
-    public scrapeGrades(): GradeData | null {
-        const courseElement = document.querySelector(GradeScraper.COURSE_NAME_SELECTOR);
-        const gradeTable = document.querySelector(GradeScraper.GRADE_TABLE_SELECTOR);
-
-        if (!courseElement || !gradeTable) return null;
+function scrapeGrades(): GradeData | null {
+    try {
+        console.log('CanvasPal: Starting grade scraping...');
+        
+        const courseElement = document.querySelector('.course-title');
+        const gradeTable = document.querySelector('.student_assignments');
+        
+        if (!courseElement) {
+            console.warn('CanvasPal: Course title element not found');
+            return null;
+        }
+        
+        if (!gradeTable) {
+            console.warn('CanvasPal: Grade table not found');
+            return null;
+        }
 
         const courseName = courseElement.textContent?.trim() || 'Unknown Course';
-        const assignments = this.scrapeAssignments(gradeTable);
-
-        return {
-            courseName,
-            assignments
-        };
-    }
-
-    private scrapeAssignments(table: Element): GradeData['assignments'] {
-        const rows = table.querySelectorAll('tr.student_assignment');
-        return Array.from(rows).map(row => ({
-            name: this.getAssignmentName(row),
-            points: this.getPoints(row),
-            pointsPossible: this.getPointsPossible(row),
-            weight: this.getWeight(row)
+        console.log('CanvasPal: Found course:', courseName);
+        
+        const rows = gradeTable.querySelectorAll('tr.student_assignment');
+        console.log('CanvasPal: Found', rows.length, 'assignments');
+        
+        const assignments = Array.from(rows).map(row => ({
+            name: row.querySelector('.assignment_name')?.textContent?.trim() || 'Unknown Assignment',
+            points: parseFloat(row.querySelector('.grade')?.textContent?.trim() || '0'),
+            pointsPossible: parseFloat(row.querySelector('.points_possible')?.textContent?.trim() || '0'),
+            weight: parseFloat(row.querySelector('.assignment_weight')?.textContent?.trim() || '0')
         }));
-    }
 
-    private getAssignmentName(row: Element): string {
-        return row.querySelector('.assignment_name')?.textContent?.trim() || 'Unknown Assignment';
-    }
-
-    private getPoints(row: Element): number {
-        const points = row.querySelector('.grade')?.textContent?.trim();
-        return points ? parseFloat(points) : 0;
-    }
-
-    private getPointsPossible(row: Element): number {
-        const possible = row.querySelector('.points_possible')?.textContent?.trim();
-        return possible ? parseFloat(possible) : 0;
-    }
-
-    private getWeight(row: Element): number {
-        const weight = row.querySelector('.assignment_weight')?.textContent?.trim();
-        return weight ? parseFloat(weight) : 0;
+        const data = { courseName, assignments };
+        console.log('CanvasPal: Successfully scraped data:', data);
+        return data;
+    } catch (error) {
+        console.error('CanvasPal: Error scraping grades:', error);
+        return null;
     }
 }
 
-// Initialize scraper and send data to background service
-const scraper = new GradeScraper();
-const gradeData = scraper.scrapeGrades();
+// Execute after DOM is fully loaded
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeScraper);
+} else {
+    initializeScraper();
+}
 
-if (gradeData) {
-    chrome.runtime.sendMessage({
-        type: 'GRADE_DATA',
-        data: gradeData
-    });
+function initializeScraper() {
+    console.log('CanvasPal: Initializing grade scraper...');
+    const gradeData = scrapeGrades();
+    
+    if (gradeData) {
+        console.log('CanvasPal: Sending grade data to background service...');
+        chrome.runtime.sendMessage({
+            type: 'GRADE_DATA',
+            data: gradeData
+        }).then(() => {
+            console.log('CanvasPal: Grade data sent successfully');
+        }).catch(error => {
+            console.error('CanvasPal: Failed to send grade data:', error);
+        });
+    } else {
+        console.warn('CanvasPal: No grade data found to send');
+    }
 }

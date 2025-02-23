@@ -1,22 +1,30 @@
-import type { CalendarEvent } from '../types/models';
-export interface ICalEvent extends CalendarEvent {
-    gradeWeight?: number;
-    pointsPossible?: number;
-    currentScore?: number;
-}
-export declare class BackgroundService {
+declare class BackgroundService {
     private static readonly SYNC_INTERVAL;
     private static readonly RETRY_INTERVAL;
     private gradeData;
     private lastSyncTime;
     private syncIntervalId?;
     private retryTimeoutId?;
+    private settings;
+    private assignments;
+    private detector;
+    private priorityCalculator;
+    private logger;
     constructor();
-    private initialize;
+    initialize(): Promise<void>;
+    private initializeMessageHandlers;
+    private handleMessage;
+    private getAssignments;
+    refreshAssignments(): Promise<void>;
+    updateAssignmentCompletion(assignmentId: string, completed: boolean): Promise<void>;
+    private saveAssignments;
+    private notifyPopups;
+    private setupAutoRefresh;
+    private getAssignmentTypeCounts;
     private fetchCalendarData;
     private handleGradeData;
     private startPeriodicSync;
-    private performSync;
+    performSync(): Promise<void>;
     private fetchAndProcessAssignments;
     private enrichAssignmentsWithGrades;
     private findGradeInfo;
@@ -24,3 +32,4 @@ export declare class BackgroundService {
     private extractCourseId;
 }
 export declare const backgroundService: BackgroundService;
+export {};

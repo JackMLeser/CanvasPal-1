@@ -44,17 +44,15 @@ export class DebugManager {
         setInterval(async () => {
             if (this.config.enabled && this.config.showPerformanceMetrics) {
                 const report = this.performanceMonitor.getReport();
-                await this.performanceLogger.logPerformance({
-                    timestamp: Date.now(),
-                    metrics: report.metrics,
-                    summary: {
-                        totalDuration: report.summary.totalDuration,
-                        averageDuration: report.summary.averageDuration,
-                        slowestOperation: report.summary.slowestOperation.name,
-                        fastestOperation: report.summary.fastestOperation.name
-                    }
-                });
-
+                // Filter out metrics with undefined duration and ensure proper type
+                const validMetrics = report.metrics.filter(m => m.duration !== undefined).map(m => ({
+                    name: m.name,
+                    duration: m.duration as number,
+                    metadata: m.metadata
+                }));
+                
+                await this.performanceLogger.logPerformance(validMetrics);
+                
                 if (this.config.showPerformanceMetrics) {
                     await this.updatePerformanceAnalysis();
                 }
