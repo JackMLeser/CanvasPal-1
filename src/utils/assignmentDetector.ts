@@ -34,10 +34,17 @@ export class AssignmentDetector {
     public async detectAssignments(): Promise<Assignment[]> {
         return this.performanceMonitor.monitorAsync('detectAssignments', async () => {
             try {
+                // Check if we're on a Canvas page
+                if (!window.location.hostname.includes('instructure.com')) {
+                    this.logger.info('Not on a Canvas page, skipping assignment detection');
+                    return [];
+                }
+
+                this.logger.info('Starting assignment detection');
                 this.debugPanel.logDetectionEvent('Starting assignment detection');
                 
                 // Monitor date detection
-                const dateMatches = await this.performanceMonitor.monitorAsync('dateDetection', 
+                const dateMatches = await this.performanceMonitor.monitorAsync('dateDetection',
                     async () => this.dateDebugger.highlightDates(),
                     { totalElements: document.querySelectorAll('[class*="date"]').length }
                 );
@@ -48,21 +55,32 @@ export class AssignmentDetector {
                     performance: this.performanceMonitor.getReport()
                 });
 
-                // Monitor API fetches in parallel
-                const [plannerItems, missingSubmissions, dashboardItems] = await Promise.all([
-                    this.performanceMonitor.monitorAsync('fetchPlannerItems', 
-                        () => this.fetchPlannerItems()),
-                    this.performanceMonitor.monitorAsync('fetchMissingSubmissions', 
-                        () => this.fetchMissingSubmissions()),
-                    this.performanceMonitor.monitorAsync('parseDashboardCards', 
-                        () => this.parseDashboardCards())
-                ]);
+                let allAssignments: Assignment[] = [];
 
-                const allAssignments = [...plannerItems, ...missingSubmissions, ...dashboardItems]
-                    .filter(assignment => this.isValidAssignment(assignment));
+                try {
+                    // Monitor API fetches in parallel
+                    const [plannerItems, missingSubmissions, dashboardItems] = await Promise.all([
+                        this.performanceMonitor.monitorAsync('fetchPlannerItems',
+                            () => this.fetchPlannerItems()),
+                        this.performanceMonitor.monitorAsync('fetchMissingSubmissions',
+                            () => this.fetchMissingSubmissions()),
+                        this.performanceMonitor.monitorAsync('parseDashboardCards',
+                            () => this.parseDashboardCards())
+                    ]);
+
+                    this.logger.info(`Retrieved: ${plannerItems.length} planner items, ${missingSubmissions.length} missing submissions, ${dashboardItems.length} dashboard items`);
+
+                    allAssignments = [...plannerItems, ...missingSubmissions, ...dashboardItems]
+                        .filter(assignment => this.isValidAssignment(assignment));
+
+                    this.logger.info(`Total valid assignments found: ${allAssignments.length}`);
+                } catch (error) {
+                    this.logger.error('Error fetching assignments:', error);
+                    return [];
+                }
 
                 // Monitor date validation
-                await this.performanceMonitor.monitorAsync('validateDates', 
+                await this.performanceMonitor.monitorAsync('validateDates',
                     async () => this.validateAssignmentDates(allAssignments, dateMatches),
                     { assignmentCount: allAssignments.length }
                 );
@@ -107,21 +125,27 @@ export class AssignmentDetector {
 
     private async fetchPlannerItems(): Promise<Assignment[]> {
         try {
-            const response = await fetch('/api/v1/planner/items?per_page=50', {
+            const baseUrl = window.location.origin;
+            this.logger.info(`Fetching planner items from ${baseUrl}`);
+            
+            const response = await fetch(`${baseUrl}/api/v1/planner/items?per_page=50`, {
                 headers: {
                     'Accept': 'application/json+canvas-string-ids, application/json',
                     'X-Requested-With': 'XMLHttpRequest'
                 },
-                credentials: 'same-origin'
+                credentials: 'include'
             });
 
             if (!response.ok) {
                 this.logger.error(`HTTP error fetching planner items! status: ${response.status}`);
+                const errorText = await response.text();
+                this.logger.error(`Error details: ${errorText}`);
                 return [];
             }
             
             const items = await response.json();
             this.debugPanel.logDetectionEvent('Planner items retrieved:', items);
+            this.logger.info(`Retrieved ${items.length} planner items`);
 
             return items.map((item: any) => {
                 try {
@@ -148,20 +172,26 @@ export class AssignmentDetector {
 
     private async fetchMissingSubmissions(): Promise<Assignment[]> {
         try {
-            const response = await fetch('/api/v1/users/self/missing_submissions?include[]=planner_overrides', {
+            const baseUrl = window.location.origin;
+            this.logger.info(`Fetching missing submissions from ${baseUrl}`);
+            
+            const response = await fetch(`${baseUrl}/api/v1/users/self/missing_submissions?include[]=planner_overrides`, {
                 headers: {
                     'Accept': 'application/json',
                     'X-Requested-With': 'XMLHttpRequest'
                 },
-                credentials: 'same-origin'
+                credentials: 'include'
             });
 
             if (!response.ok) {
                 this.logger.error(`HTTP error fetching missing submissions! status: ${response.status}`);
+                const errorText = await response.text();
+                this.logger.error(`Error details: ${errorText}`);
                 return [];
             }
             
             const submissions = await response.json();
+            this.logger.info(`Retrieved ${submissions.length} missing submissions`);
             return submissions.map((submission: any) => {
                 try {
                     return this.convertMissingSubmission(submission);
@@ -179,20 +209,32 @@ export class AssignmentDetector {
 
     private async parseDashboardCards(): Promise<Assignment[]> {
         try {
-            const response = await fetch('/api/v1/dashboard/dashboard_cards', {
+            // Check if we're on a Canvas page
+            if (!window.location.hostname.includes('instructure.com')) {
+                this.logger.info('Not on a Canvas page, skipping dashboard cards fetch');
+                return [];
+            }
+
+            const baseUrl = window.location.origin;
+            this.logger.info(`Fetching dashboard cards from ${baseUrl}`);
+            
+            const response = await fetch(`${baseUrl}/api/v1/dashboard/dashboard_cards`, {
                 headers: {
                     'Accept': 'application/json+canvas-string-ids, application/json',
                     'X-Requested-With': 'XMLHttpRequest'
                 },
-                credentials: 'same-origin'
+                credentials: 'include'
             });
 
             if (!response.ok) {
                 this.logger.error(`HTTP error fetching dashboard cards! status: ${response.status}`);
+                const errorText = await response.text();
+                this.logger.error(`Error details: ${errorText}`);
                 return [];
             }
             
             const cards = await response.json();
+            this.logger.info(`Retrieved ${cards?.length || 0} dashboard cards`);
             this.debugPanel.logDetectionEvent('Dashboard cards retrieved:', cards);
 
             const assignments: Assignment[] = [];

@@ -1,4 +1,4 @@
-    // Create and inject the button and popup HTML
+// Create and inject the button and popup HTML
 const createElements = async () => {
     try {
         console.log('Creating CanvasPal elements');
