@@ -24,7 +24,7 @@ module.exports = {
                             configFile: 'tsconfig.json',
                             transpileOnly: false,
                             compilerOptions: {
-                                module: 'commonjs',
+                                module: 'esnext',
                                 esModuleInterop: true,
                                 allowSyntheticDefaultImports: true
                             }
@@ -51,9 +51,31 @@ module.exports = {
             patterns: [
                 { from: 'src/popup/popup.html', to: 'popup/popup.html' },
                 { from: 'src/popup/popup.css', to: 'popup/popup.css' },
-                { from: 'src/settings/settings.html', to: 'settings/settings.html' },
+                {
+                    from: 'src/settings/settings.html',
+                    to: 'settings/settings.html',
+                    transform(content) {
+                        return content.toString()
+                            .replace(
+                                '<script type="module" src="/dist/settings/settings.js">',
+                                '<script type="module" src="settings.js">'
+                            );
+                    }
+                },
                 { from: 'src/settings/settings.css', to: 'settings/settings.css' },
-                { from: 'manifest.json', to: 'manifest.json' },
+                {
+                    from: 'src/manifest.json',
+                    to: 'manifest.json',
+                    transform(content) {
+                        const manifest = JSON.parse(content.toString());
+                        // Update paths to match webpack output
+                        manifest.background.service_worker = 'background/index.js';
+                        manifest.content_scripts[0].js = ['contentScript/index.js'];
+                        manifest.options_page = 'settings/settings.html';
+                        manifest.action.default_popup = 'popup/popup.html';
+                        return JSON.stringify(manifest, null, 2);
+                    }
+                },
                 { from: 'icons/*.{png,webp}', to: 'icons/[name][ext]' },
                 { from: 'Prototype/style/CanvasPAL_logo.webp', to: 'icons/CanvasPAL_logo.webp' }
             ]

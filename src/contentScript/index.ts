@@ -199,8 +199,19 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         switch (message.type) {
             case 'SETTINGS_UPDATED':
                 console.log('Settings updated:', message.settings);
-                sendResponse({ success: true });
-                break;
+                // Store settings in local storage for quick access
+                chrome.storage.local.set({ settings: message.settings })
+                    .then(() => {
+                        console.log('Settings saved to local storage');
+                        // Re-initialize scrapers with new settings
+                        initializeScrapers();
+                        sendResponse({ success: true });
+                    })
+                    .catch(error => {
+                        console.error('Failed to save settings:', error);
+                        sendResponse({ success: false, error: error.message });
+                    });
+                return true; // Keep channel open for async response
 
             case 'REFRESH_ASSIGNMENTS':
                 console.log('Refreshing assignments');
@@ -242,22 +253,50 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 });
 
 // Initialize on load
-const initialize = () => {
-    // Wait for DOM to be ready before initializing scrapers
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', () => {
+const initialize = async () => {
+    const waitForBackgroundReady = async (retries = 0, maxRetries = 3) => {
+        try {
+            // Try to ping the background script
+            await chrome.runtime.sendMessage({ type: 'PING' });
+            console.log('Background script is ready');
+            return true;
+        } catch (error) {
+            if (retries < maxRetries) {
+                console.log(`Waiting for background script... (attempt ${retries + 1})`);
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                return waitForBackgroundReady(retries + 1, maxRetries);
+            }
+            console.error('Background script not available after retries');
+            return false;
+        }
+    };
+
+    try {
+        // Wait for background script to be ready
+        const isBackgroundReady = await waitForBackgroundReady();
+        if (!isBackgroundReady) {
+            throw new Error('Background script not available');
+        }
+
+        // Now notify background script that content script is ready
+        await chrome.runtime.sendMessage({ type: 'CONTENT_SCRIPT_READY' });
+        console.log('Content script ready message sent');
+
+        // Initialize scrapers based on DOM state
+        const initScrapers = () => {
             initializeScrapers();
-            // Notify background script after initialization
-            chrome.runtime.sendMessage({ type: 'CONTENT_SCRIPT_READY' })
-                .catch(error => console.error('Failed to send ready message:', error));
-        });
-    } else {
-        initializeScrapers();
-        // Notify background script after initialization
-        chrome.runtime.sendMessage({ type: 'CONTENT_SCRIPT_READY' })
-            .catch(error => console.error('Failed to send ready message:', error));
+            console.log('Scrapers initialized');
+        };
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initScrapers);
+        } else {
+            initScrapers();
+        }
+    } catch (error) {
+        console.error('Failed to initialize content script:', error);
     }
 };
 
-// Run initialization
-initialize();
+// Wait for a moment before initializing to ensure extension is ready
+setTimeout(initialize, 500);

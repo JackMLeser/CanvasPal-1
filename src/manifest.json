@@ -5,16 +5,18 @@
 	"description": "Prioritize Canvas assignments based on due dates, grade weights, and grade impact",
 	"permissions": [
 		"storage",
-		"activeTab",
+		"tabs",
 		"alarms",
 		"notifications",
 		"commands"
 	],
 	"host_permissions": [
-		"*://*.instructure.com/*"
+		"*://*.instructure.com/*",
+		"*://*.canvas.com/*"
 	],
 	"background": {
-		"service_worker": "background/index.js"
+		"service_worker": "dist/background/index.js",
+		"type": "module"
 	},
 	"action": {
 		"default_popup": "popup/popup.html",
@@ -32,15 +34,30 @@
 	"options_page": "settings/settings.html",
 	"content_scripts": [
 		{
-			"matches": ["*://*.instructure.com/*"],
-			"js": ["contentScript/index.js"],
-			"run_at": "document_idle"
+			"matches": [
+				"*://*.instructure.com/*",
+				"*://*.canvas.com/*"
+			],
+			"js": ["dist/contentScript/index.js"],
+			"run_at": "document_start",
+			"all_frames": false
 		}
 	],
 	"web_accessible_resources": [
 		{
-			"resources": ["*.map", "vendors/*.js", "content/*.map"],
-			"matches": ["*://*.instructure.com/*"]
+			"resources": [
+				"*.map",
+				"vendors/*.js",
+				"content/*.map",
+				"settings/*.js",
+				"background/*.js",
+				"contentScript/*.js",
+				"popup/*.js"
+			],
+			"matches": [
+				"*://*.instructure.com/*",
+				"*://*.canvas.com/*"
+			]
 		}
 	],
 	"commands": {

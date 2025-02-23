@@ -5,41 +5,56 @@
   "description": "Prioritize Canvas assignments based on due dates, grade weights, and grade impact",
   "permissions": [
     "storage",
-    "activeTab",
+    "tabs",
     "alarms",
     "notifications",
-    "commands",
-    "scripting"
+    "commands"
   ],
   "host_permissions": [
     "*://*.instructure.com/*",
     "*://*.canvas.com/*"
   ],
   "background": {
-    "service_worker": "dist/background/index.js"
+    "service_worker": "background/index.js",
+    "type": "module"
   },
   "action": {
-    "default_popup": "dist/popup/popup.html",
+    "default_popup": "popup/popup.html",
     "default_icon": {
-      "16": "dist/icons/icon16.png",
-      "48": "dist/icons/icon48.png",
-      "128": "dist/icons/icon128.png"
+      "16": "icons/CanvasPAL_logo_16.png",
+      "48": "icons/CanvasPAL_logo_48.png",
+      "128": "icons/CanvasPAL_logo_128.png"
     }
   },
   "icons": {
-    "16": "dist/icons/icon16.png",
-    "48": "dist/icons/icon48.png",
-    "128": "dist/icons/icon128.png"
+    "16": "icons/CanvasPAL_logo_16.png",
+    "48": "icons/CanvasPAL_logo_48.png",
+    "128": "icons/CanvasPAL_logo_128.png"
   },
-  "options_page": "dist/settings/settings.html",
+  "options_page": "settings/settings.html",
   "content_scripts": [
     {
       "matches": [
         "*://*.instructure.com/*",
         "*://*.canvas.com/*"
       ],
-      "js": ["dist/contentScript/index.js"],
-      "run_at": "document_start"
+      "js": [
+        "contentScript/index.js"
+      ],
+      "run_at": "document_start",
+      "all_frames": false
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "*.map",
+        "vendors/*.js",
+        "content/*.map"
+      ],
+      "matches": [
+        "*://*.instructure.com/*"
+      ]
     }
   ],
   "commands": {

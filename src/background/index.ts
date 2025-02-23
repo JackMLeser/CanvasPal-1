@@ -89,24 +89,41 @@ class BackgroundService {
     }
 
     private async handleMessage(
-        message: any, 
-        sender: chrome.runtime.MessageSender, 
+        message: any,
+        sender: chrome.runtime.MessageSender,
         sendResponse: (response?: any) => void
     ): Promise<void> {
         try {
             switch (message.type) {
-                case 'SETTINGS_UPDATED':
-                    await this.handleSettingsUpdate(message.settings);
+                case 'PING':
+                    // Respond immediately to ping requests
                     sendResponse({ success: true });
                     break;
 
-                case 'GET_ASSIGNMENTS':
-                    if (!this.contentScriptReady) {
-                        sendResponse({ assignments: [], message: 'Loading assignments...' });
-                        return;
+                case 'SETTINGS_UPDATED':
+                    try {
+                        await this.handleSettingsUpdate(message.settings);
+                        sendResponse({ success: true });
+                    } catch (error: unknown) {
+                        const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+                        console.error('Error handling settings update:', errorMessage);
+                        sendResponse({ success: false, error: errorMessage });
                     }
-                    const assignments = await this.getAssignments();
-                    sendResponse({ assignments });
+                    break;
+
+                case 'GET_ASSIGNMENTS':
+                    try {
+                        if (!this.contentScriptReady) {
+                            sendResponse({ assignments: [], message: 'Loading assignments...' });
+                            return;
+                        }
+                        const assignments = await this.getAssignments();
+                        sendResponse({ assignments });
+                    } catch (error: unknown) {
+                        const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+                        console.error('Error getting assignments:', errorMessage);
+                        sendResponse({ success: false, error: errorMessage });
+                    }
                     break;
 
                 case 'UPDATE_ASSIGNMENT_COMPLETION':
@@ -153,37 +170,63 @@ class BackgroundService {
     }
 
     private async handleSettingsUpdate(newSettings: Settings): Promise<void> {
-        this.settings = newSettings;
-        
-        // Save to storage
-        await chrome.storage.sync.set({ settings: newSettings });
+        try {
+            this.settings = newSettings;
+            
+            // Save to storage
+            await chrome.storage.sync.set({ settings: newSettings });
+            this.logger.info('Settings saved to sync storage');
 
-        // Notify all Canvas tabs
-        const tabs = await chrome.tabs.query({
-            url: [
-                "*://*.instructure.com/*",
-                "*://*.canvas.com/*"
-            ]
-        });
+            // Save to local storage for faster access
+            await chrome.storage.local.set({ settings: newSettings });
+            this.logger.info('Settings saved to local storage');
 
-        // Send update to each tab
-        const updatePromises = tabs.map(tab => {
-            if (tab.id) {
-                return chrome.tabs.sendMessage(tab.id, {
-                    type: 'SETTINGS_UPDATED',
-                    settings: newSettings
-                }).catch(error => {
-                    // Log but don't fail if a tab doesn't have our content script
-                    this.logger.debug(`Could not update tab ${tab.id}:`, error);
-                });
-            }
-        });
+            // Notify all Canvas tabs
+            const tabs = await chrome.tabs.query({
+                url: [
+                    "*://*.instructure.com/*",
+                    "*://*.canvas.com/*"
+                ]
+            });
 
-        await Promise.all(updatePromises);
-        this.logger.info('Settings updated and propagated to all tabs');
+            // Send update to each tab with retry logic
+            const updatePromises = tabs.map(async tab => {
+                if (tab.id) {
+                    try {
+                        await chrome.tabs.sendMessage(tab.id, {
+                            type: 'SETTINGS_UPDATED',
+                            settings: newSettings
+                        });
+                        this.logger.debug(`Settings updated in tab ${tab.id}`);
+                    } catch (error) {
+                        // If tab is not ready, queue update for retry
+                        this.logger.debug(`Could not update tab ${tab.id}, will retry:`, error);
+                        setTimeout(async () => {
+                            try {
+                                if (tab.id) {
+                                    await chrome.tabs.sendMessage(tab.id, {
+                                        type: 'SETTINGS_UPDATED',
+                                        settings: newSettings
+                                    });
+                                    this.logger.debug(`Settings updated in tab ${tab.id} after retry`);
+                                }
+                            } catch (retryError) {
+                                this.logger.debug(`Failed to update tab ${tab.id} after retry:`, retryError);
+                            }
+                        }, 2000); // Retry after 2 seconds
+                    }
+                }
+            });
 
-        // Trigger a sync with new settings
-        await this.performSync();
+            await Promise.all(updatePromises);
+            this.logger.info('Settings updated and propagated to all tabs');
+
+            // Trigger a sync with new settings
+            await this.performSync();
+        } catch (error) {
+            this.logger.error('Error in handleSettingsUpdate:', error);
+            throw error;
+        }
     }
 
     private async getAssignments(): Promise<Assignment[]> {
@@ -467,19 +510,55 @@ class BackgroundService {
 export const backgroundService = new BackgroundService();
 
 // Initialize background service and set up listeners
-backgroundService.initialize().then(() => {
-    // Set up alarm listener for periodic sync
-    chrome.alarms.create('sync', { periodInMinutes: 30 });
-    chrome.alarms.onAlarm.addListener((alarm) => {
-        if (alarm.name === 'sync') {
-            void backgroundService.performSync();
-        }
-    });
+const initializeBackgroundService = async () => {
+    try {
+        // Set up global error handlers
+        window.onerror = (message, source, lineno, colno, error) => {
+            console.error('Global error:', { message, source, lineno, colno, error });
+        };
 
-    // Add keyboard command listener
-    chrome.commands.onCommand.addListener((command) => {
-        if (command === 'refresh-assignments') {
-            void backgroundService.performSync();
-        }
-    });
+        window.onunhandledrejection = (event) => {
+            console.error('Unhandled promise rejection:', event.reason);
+        };
+
+        // Initialize core service
+        await backgroundService.initialize();
+        console.log('Background service initialized');
+
+        // Set up alarm listener for periodic sync
+        chrome.alarms.create('sync', { periodInMinutes: 30 });
+        chrome.alarms.onAlarm.addListener((alarm) => {
+            if (alarm.name === 'sync') {
+                void backgroundService.performSync();
+            }
+        });
+
+        // Add keyboard command listener
+        chrome.commands.onCommand.addListener((command) => {
+            if (command === 'refresh-assignments') {
+                void backgroundService.performSync();
+            }
+        });
+
+        // Set up dedicated PING handler
+        chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+            if (message.type === 'PING') {
+                sendResponse({ success: true });
+                return true;
+            }
+            return false;
+        });
+
+        console.log('Background service setup complete');
+    } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+        console.error('Failed to initialize background service:', errorMessage);
+        // Re-throw to ensure service worker restarts
+        throw error;
+    }
+};
+
+// Start initialization
+initializeBackgroundService().catch(error => {
+    console.error('Critical error during background service initialization:', error);
 });
